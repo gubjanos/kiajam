@@ -1,7 +1,7 @@
 public class JaniPlayer extends Player {
   private static int time;
   private static Map map;
-  private static int[][][] populations; // x, y, time
+  private static int[][][] populations; // time, x, y
 
   public static void makeMove(TPlayer player) {
     if (player.myTime == 0) init(player);
@@ -24,7 +24,7 @@ public class JaniPlayer extends Player {
 
   private static void init(TPlayer player) {
     map = player.map;
-    populations = new int[Decl.MAP_SIZE][Decl.MAP_SIZE][Decl.TIME_MAX];
+    populations = new int[Decl.TIME_MAX][][];
     populations[0] = map.pop;
     // calculating populations in advance
     for (int i = 1; i < Decl.TIME_MAX; i++) {
