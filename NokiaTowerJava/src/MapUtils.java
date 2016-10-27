@@ -42,4 +42,9 @@ public class MapUtils {
 
     return result;
   }
+
+  // Returns the squared distance of two points (x1,y1) and (x2,y2)
+  public static int calculateSquaredDistance(int x1, int y1, int x2, int y2) {
+    return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
+  }
 }

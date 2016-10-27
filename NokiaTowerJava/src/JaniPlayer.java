@@ -1,5 +1,4 @@
 public class JaniPlayer extends Player {
-  private static int time;
   private static Map map;
   private static int[][][] populations; // time, x, y
 
