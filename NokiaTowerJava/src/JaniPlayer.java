@@ -4,10 +4,9 @@ public class JaniPlayer extends Player {
   private static int[][][] populations; // x, y, time
 
   public static void makeMove(TPlayer player) {
-    if (player.myTime == 0) init(player);
+    //if (player.myTime == 0) init(player);
 
     System.out.println(player.myTime);
-    //if (player.headerIni != null && player.myTime == 1)
     System.out.println("time: " + player.inputData.header.time + " total pop:" + player.map.totalPop);
 
     stepInGame(player);
