@@ -23,8 +23,8 @@ public class Map {
 	public double[] paramUrban = new double[Decl.TIME_MAX];
 	public double[] paramGrow = new double[Decl.TIME_MAX];
 
-	private boolean[][] newMap = new boolean[2 * Decl.MAP_SIZE + 3][2 * Decl.MAP_SIZE + 3];
-	private int[][] centDist = new int[Decl.MAP_SIZE][Decl.MAP_SIZE];
+	protected boolean[][] newMap = new boolean[2 * Decl.MAP_SIZE + 3][2 * Decl.MAP_SIZE + 3];
+	protected int[][] centDist = new int[Decl.MAP_SIZE][Decl.MAP_SIZE];
 
 	public int centerDistance(int y, int x) {
 		int best = mapWidth + mapHeight;
