@@ -2,8 +2,14 @@ public class JaniPlayer extends Player {
   private static Map map;
   private static int[][][] populations; // time, x, y
 
+  // otletek: tornyonkent kiszamolni range-ekre az osszlakossagot koronkent: 200 * 365 * RANGE => 0.07MB * range
+
   public static void makeMove(TPlayer player) {
-    if (player.myTime == 0) init(player);
+    if (player.myTime == 0) {
+      long t = System.currentTimeMillis();
+      init(player);
+      System.out.println("Initialization took " + (System.currentTimeMillis() - t) + " ms.");
+    }
 
     System.out.println(player.myTime);
     System.out.println("time: " + player.inputData.header.time + " total pop:" + player.map.totalPop);
