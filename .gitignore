@@ -1,3 +1,6 @@
 *.class
 *.jar
 *.dll
+*.classpath
+*.iml
+*.idea
