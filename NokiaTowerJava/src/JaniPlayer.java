@@ -102,20 +102,9 @@ public class JaniPlayer extends Player {
       return (short)(effectiveMaxRadius + state.distMin);
     }
 
-    // maximum revenue
-    // if there is no way to generate revenue at a tower with current technology returns -1
-    public static double maximumRevenue(short towerID, double dataTech, int time) {
-      return revenueOfTower(towerID, dataTech, time, state.offerMax);
-    }
-
     // revenue with a given offer level
-    // if there is no way to generate revenue at a tower with current technology returns -1
-    // if the offer is greater then the maximum givable, also returns -1
-    public static double revenueOfTower(short towerID, double dataTech, int time, double offer) {
-      int maximumDistance = maximumDistance(towerID, dataTech, time);
-      if (maximumDistance < state.distMin) return -1;
-      if (offer > state.offerMax) return -1;
-      return towerPopulations[time][towerID][maximumDistance] * offer;
+    public static double revenueOfTower(short towerID, double dataTech, short distance, int time, double offer) {
+      return towerPopulations[time][towerID][distance] * offer;
     }
 
     // cost of tower
@@ -135,9 +124,13 @@ public class JaniPlayer extends Player {
     }
 
     // profit of the tower with a hypothetical state
+    // if tower is not runnable, the negative renting cost will be returned
+    // TODO add distance
     public static double profitOfTower(short towerID, float rentingCost, float offer, int time, TPlayer player) {
-      double cost = costOfTower(towerID, rentingCost, player);
-      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(4, dataTechnology - 1), time, offer);
+      short distance = maximumDistance(towerID, state.dataTech, time);
+      if (distance < state.distMin) return -rentingCost;
+      double cost = costOfTower(towerID, rentingCost, distance, player);
+      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(4, dataTechnology - 1), distance, time, offer);
       return revenue - cost;
     }
   }
