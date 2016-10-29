@@ -120,8 +120,8 @@ public class JaniPlayer extends Player {
 
     // cost of tower
     // calculated with a given renting offer
-    public static double costOfTower(short towerID, double rentingOffer, TPlayer player) {
-      return player.inputData.towerInf[towerID].runningCost + rentingOffer;
+    public static double costOfTower(short towerID, double rentingOffer, short distance, TPlayer player) {
+      return player.inputData.towerInf[towerID].runningCost * distance + rentingOffer;
     }
 
     // profit of tower with actual state
@@ -142,33 +142,44 @@ public class JaniPlayer extends Player {
     }
   }
 
-  private static void makeOffer(TPlayer player, short towerID, int offer, int distance) {
-
-  }
-
-  // validating and removing not applied orders
-  public static void validateOrders(TPlayer player) {
+  // validating orders and checking gathered towers
+  public static void validateTowers(TPlayer player) {
     TtowerOrderRec[] orders = player.outputData.orders;
 
     // first, validating if we gathered towers
     for (int i = 0; i < orders.length; i++) {
       if (!orders[i].leave) {
+        short towerID = orders[i].towerID;
+        if (player.inputData.towerInf[towerID].owner == player.ID) {
+          // we get this tower!
+          myTowers.add(towerID);
+        }
       }
     }
-    
+
+    // check if all of our towers are really ours
+    ArrayList<Short> towersToRemove = new ArrayList<>();
+    for (Short towerID : myTowers) {
+      if (player.inputData.towerInf[towerID].owner != player.ID) towersToRemove.add(towerID);
+    }
+    for (Short towerID : towersToRemove) myTowers.remove(towerID);
   }
 
   private static void stepInGame(TPlayer player) {
+    // set up game state
     player.myTime++;
-    validateOrders(player);
-    clearLastState(player);
+    validateTowers(player);
+    clearLastOrder(player);
+    state.money = player.inputData.header.money;
+
+    // do something useful
+    mostBasicStrategy(player);
   }
+
 
   private static void mostBasicStrategy(TPlayer player) {
     Set<Short> secureTowers = new HashSet<>();
     Set<Short> notWorthItTowers = new HashSet<>();
-
-    // update state of mytowers
 
     // check if the owned towers still worth it
     for (Short towerID : myTowers) {
@@ -183,15 +194,15 @@ public class JaniPlayer extends Player {
       if (actualTowerInf.owner != 0) continue; // for now skip attacks
       int profitNextSteps = 0;
       // NOTE not checking if all profit is positive
-      profitNextSteps += TowerUtils.profitOfTower(i, (float)state.rentingMin, (float)state.offerMax, player.myTime, player);
-      profitNextSteps += TowerUtils.profitOfTower(i, (float)state.rentingMin, (float)state.offerMax, player.myTime+1, player);
-      profitNextSteps += TowerUtils.profitOfTower(i, (float)state.rentingMin, (float)state.offerMax, player.myTime+2, player);
+      profitNextSteps += TowerUtils.profitOfTower(i, (float)state.rentingMin, (float)player.inputData.header.offerMax, player.myTime, player);
+      profitNextSteps += TowerUtils.profitOfTower(i, (float)state.rentingMin, (float)player.inputData.header.offerMax, player.myTime+1, player);
+      profitNextSteps += TowerUtils.profitOfTower(i, (float)state.rentingMin, (float)player.inputData.header.offerMax, player.myTime+2, player);
       if (profitNextSteps < 0) continue; // does not worth it!
 
       // buy as long as we can
-      if (state.money > 3 * state.rentingMin) {
+      if (state.money >  state.rentingMin) {
         player.rentTower(i, (float)state.rentingMin, TowerUtils.maximumDistance(i, state.dataTech, player.myTime), (float)state.offerMax);
-        state.money -= 3 * state.rentingMin;
+        state.money -= state.rentingMin;
       }
     }
 
@@ -200,10 +211,9 @@ public class JaniPlayer extends Player {
       myTowers.remove(towerID);
       player.leaveTower(towerID);
     }
-    // update money
   }
 
-  private static void clearLastState(TPlayer player) {
+  private static void clearLastOrder(TPlayer player) {
     player.outputData.invest = 0;
     player.outputData.numOrders = 0;
   }
