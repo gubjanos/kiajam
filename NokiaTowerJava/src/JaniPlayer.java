@@ -89,6 +89,7 @@ public class JaniPlayer extends Player {
     }
   }
 
+  // NOTE: these methods are now not enemy-aware
   public static class TowerUtils {
     // calculate
     // maximum distance for a tower wrt data limit
@@ -185,7 +186,7 @@ public class JaniPlayer extends Player {
       TtowerInfRec actualTowerInf = player.inputData.towerInf[i];
       if (actualTowerInf.owner != player.ID) continue; // for now skip our towers
       if (actualTowerInf.owner != 0) continue; // for now skip attacks
-      int profitNextSteps = 0;
+      double profitNextSteps = 0.0d;
       // NOTE not checking if all profit is positive
       profitNextSteps += TowerUtils.profitOfTower(i, (float)state.rentingMin, (float)player.inputData.header.offerMax, player.myTime, player);
       profitNextSteps += TowerUtils.profitOfTower(i, (float)state.rentingMin, (float)player.inputData.header.offerMax, player.myTime+1, player);
@@ -195,7 +196,7 @@ public class JaniPlayer extends Player {
       // buy as long as we can
       if (state.money >  state.rentingMin) {
         player.rentTower(i, (float)state.rentingMin, TowerUtils.maximumDistance(i, state.dataTech, player.myTime), (float)state.offerMax);
-        state.money -= state.rentingMin;
+        state.money -= 4 * state.rentingMin; // cost of caution
       }
     }
 
