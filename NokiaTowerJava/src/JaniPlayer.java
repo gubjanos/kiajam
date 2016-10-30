@@ -34,6 +34,7 @@ public class JaniPlayer extends Player {
     }
 
     // calculating data need increasement
+    dataNeedInTime = new double[Decl.TIME_MAX];
     dataNeedInTime[0] = 1.0d;
     for (int i = 1; i < Decl.TIME_MAX; i++) {
       dataNeedInTime[i] = dataNeedInTime[i-1] * state.dataMulti;
@@ -265,6 +266,8 @@ public class JaniPlayer extends Player {
   // metastrategy is responsible for choosing from strategies over time
   // example: in the beginning it would be benefitial to be expansive, in the midgame we should be defensive and intensive
   // while in the end probably we sould just destroy some economy for our enemies
+
+  // alternative: creating a policy evaluation strategy
 
   private static void clearLastOrder(TPlayer player) {
     player.outputData.invest = 0;
