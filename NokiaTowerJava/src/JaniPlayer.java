@@ -4,7 +4,8 @@ public class JaniPlayer extends Player {
   private static Map map;
   private static TheaderIni state; // TODO: this is an initialized state, check when it has to be updated
   private static int[][][] populations; // time, x, y
-  private static int[][][] towerPopulations; // time, tower, radius initialized by method calculateTowerStatistics
+  private static int[][][] towerPopulations; // time, tower, radius initialized by method calculateTowerPopulations
+  private static short[][] towerDistances; // towerA, towerB, the distance between the two tower
 
   private static double[] dataNeedInTime; // time, the data need factor in time
   private static int dataTechnology = 1;
@@ -38,7 +39,8 @@ public class JaniPlayer extends Player {
       dataNeedInTime[i] = dataNeedInTime[i-1] * state.dataMulti;
     }
 
-    calculateTowerStatistics();
+    calculateTowerPopulations();
+    calculateTowerDistances();
 
     myTowers = new HashSet<>();
     towersUnderOffer = new HashSet<>();
@@ -61,7 +63,7 @@ public class JaniPlayer extends Player {
   }
 
   // NOTE overlapping towers not taken into consideration
-  private static void calculateTowerStatistics() {
+  private static void calculateTowerPopulations() {
     // calculating total populations
     towerPopulations = new int[Decl.TIME_MAX][][];
     effectiveMaxRadius = Math.min(state.distMax - state.distMin, MAX_RADIUS_RANGE); // radius counted from distmin
@@ -88,6 +90,16 @@ public class JaniPlayer extends Player {
       }
     }
   }
+
+  private static void calculateTowerDistances() {
+    towerDistances = new short[Decl.TOWER_MAX][Decl.TOWER_MAX];
+    for (short i = 0; i < towerDistances.length; i++) {
+      for (short j = 0; j < towerDistances.length; j++) {
+        towerDistances[i][j] = (short)Math.sqrt(MapUtils.calculateSquaredDistance(map.towers[i][0],map.towers[i][1],map.towers[j][0],map.towers[j][1]));
+      }
+    }
+  }
+
 
   // NOTE: these methods are now not enemy-aware
   public static class TowerUtils {
@@ -136,6 +148,34 @@ public class JaniPlayer extends Player {
       double cost = costOfTower(towerID, rentingCost, distance, player);
       double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(4, dataTechnology - 1), distance, time, offer);
       return revenue - cost;
+    }
+  }
+
+  public static class EnemyAwareTowerUtils extends TowerUtils {
+    public static double profitOfTower(short towerID, float rentingCost, float offer, short distance, int time, TPlayer player) {
+      if (distance < state.distMin) return -rentingCost;
+      double cost = costOfTower(towerID, rentingCost, distance, player);
+      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(4, dataTechnology - 1), distance, time, offer, player);
+      return revenue - cost;
+    }
+
+    // revenue with a given offer level
+    // this method tries to take enemy towers into consideration, also could not infer the ownership and offer changes in future
+    public static double revenueOfTower(short towerID, double dataTech, short distance, int time, double offer, TPlayer player) {
+      ArrayList<Short> towersToCheck = new ArrayList<>();
+
+      for (short i = 0; i < player.inputData.header.numTowers; i++) {
+        if (i == towerID) continue;
+        TtowerInfRec actualInfo = player.inputData.towerInf[i];
+        if (actualInfo.offer > offer) continue; // they will take ours
+        if (towerDistances[towerID][i] > distance
+            && towerDistances[towerID][i] > maximumDistance(i, state.dataTech * Math.pow(4, actualInfo.techLevel - 1), time))
+          continue; // no overlap
+
+        // overlap, complex calculations happens here
+        return 0; // TODO: do the complex calculations
+      }
+      return towerPopulations[time][towerID][distance] * offer;
     }
   }
 
