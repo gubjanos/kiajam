@@ -126,9 +126,12 @@ public class JaniPlayer extends Player {
 
     // profit of the tower with a hypothetical state
     // if tower is not runnable, the negative renting cost will be returned
-    // TODO add distance
     public static double profitOfTower(short towerID, float rentingCost, float offer, int time, TPlayer player) {
       short distance = maximumDistance(towerID, state.dataTech, time);
+      return profitOfTower(towerID, rentingCost, offer, distance, time, player);
+    }
+
+    public static double profitOfTower(short towerID, float rentingCost, float offer, short distance, int time, TPlayer player) {
       if (distance < state.distMin) return -rentingCost;
       double cost = costOfTower(towerID, rentingCost, distance, player);
       double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(4, dataTechnology - 1), distance, time, offer);
