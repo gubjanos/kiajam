@@ -250,6 +250,22 @@ public class JaniPlayer extends Player {
     }
   }
 
+  // strategies section
+  // these section is responsible for generating different strategies, the final player will be a combination of these
+  // these agents has to return values on commands how likely we would like to do something
+  // aggressive agent - destroy economy of enemy by targeting most successful towers
+  // defensive agent - keeping up economy by holding the towers worth mentioning, keeping up quality etc
+  // expansive agent - gathering economy by acquiring new towers where we can gather some profit
+  // intensive agent - gathering economy by investing in new technology
+  // each strategy should return the expected profit gather in the next 1, 5, n rounds
+  // each strategy should return the expected cost in the next 1, 5, n rounds
+  // each strategy should return the expected profit lost for enemies in the next 1, 5, n rounds
+
+  // metastrategy section
+  // metastrategy is responsible for choosing from strategies over time
+  // example: in the beginning it would be benefitial to be expansive, in the midgame we should be defensive and intensive
+  // while in the end probably we sould just destroy some economy for our enemies
+
   private static void clearLastOrder(TPlayer player) {
     player.outputData.invest = 0;
     player.outputData.numOrders = 0;
