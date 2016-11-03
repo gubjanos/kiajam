@@ -73,7 +73,7 @@ public class JaniPlayer extends Player {
     int maximumDistance = (int)Math.sqrt(squaredMaximumDistance);
 
     for (int time = 0; time < Decl.TIME_MAX; time++) {
-      towerPopulations[time] = new int[Decl.TOWER_MAX][effectiveMaxRadius];
+      towerPopulations[time] = new int[Decl.TOWER_MAX][effectiveMaxRadius+1];
     }
 
     for (int x = 0; x < Decl.MAP_SIZE; x++) {
@@ -81,7 +81,7 @@ public class JaniPlayer extends Player {
         for (int actualTower = 0; actualTower < Decl.TOWER_MAX; actualTower++) {
           // if a map point can not be used by a tower, skip
           int squaredDistance = MapUtils.calculateSquaredDistance(x, y, map.towers[actualTower][0], map.towers[actualTower][1]);
-          if (squaredDistance < squaredMaximumDistance) continue;
+          if (squaredDistance > squaredMaximumDistance) continue;
 
           int trueDistance = (int) Math.sqrt(squaredDistance);
           for (int actualDistance = trueDistance; actualDistance < maximumDistance; actualDistance++) {
@@ -151,6 +151,7 @@ public class JaniPlayer extends Player {
       double cost = costOfTower(towerID, rentingCost, distance, player);
       // TODO: do something with distances here
       double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(4, dataTechnology - 1), (short)(distance - state.distMin), time, offer);
+      System.out.println("For tower: " + towerID + "cost: " + cost + "revenue: " + revenue);
       return revenue - cost;
     }
   }
@@ -228,18 +229,22 @@ public class JaniPlayer extends Player {
       else notWorthItTowers.add(towerID);
     }
 
+    System.out.println("number of towers:" + player.inputData.towerInf.length + "offermax: " + player.inputData.header.offerMax);
+
     // check if we have towers to acquire
     for (short i = 0; i < player.inputData.towerInf.length; i++) {
       TtowerInfRec actualTowerInf = player.inputData.towerInf[i];
-      if (actualTowerInf.owner != player.ID) continue; // for now skip our towers
+      //System.out.println(actualTowerInf.owner);
+      if (actualTowerInf.owner == player.ID) continue; // for now skip our towers
       if (actualTowerInf.owner != 0) continue; // for now skip attacks
       double profitNextSteps = 0.0d;
       // NOTE not checking if all profit is positive
       profitNextSteps += TowerUtils.profitOfTower(i, (float)state.rentingMin, (float)player.inputData.header.offerMax, player.myTime, player);
       profitNextSteps += TowerUtils.profitOfTower(i, (float)state.rentingMin, (float)player.inputData.header.offerMax, player.myTime+1, player);
       profitNextSteps += TowerUtils.profitOfTower(i, (float)state.rentingMin, (float)player.inputData.header.offerMax, player.myTime+2, player);
+      //System.out.println("TowerID: " + i + "profit: " + profitNextSteps);
       if (profitNextSteps < 0) continue; // does not worth it!
-
+      System.out.println("TowerID: " + i + "profit: " + profitNextSteps);
       // buy as long as we can
       if (state.money >  state.rentingMin) {
         player.rentTower(i, (float)state.rentingMin, TowerUtils.maximumDistance(i, state.dataTech, player.myTime), (float)state.offerMax);
