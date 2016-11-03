@@ -149,7 +149,8 @@ public class JaniPlayer extends Player {
     public static double profitOfTower(short towerID, float rentingCost, float offer, short distance, int time, TPlayer player) {
       if (distance < state.distMin) return -rentingCost;
       double cost = costOfTower(towerID, rentingCost, distance, player);
-      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(4, dataTechnology - 1), distance, time, offer);
+      // TODO: do something with distances here
+      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(4, dataTechnology - 1), (short)(distance - state.distMin), time, offer);
       return revenue - cost;
     }
   }
