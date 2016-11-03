@@ -40,13 +40,13 @@ public class JaniPlayer extends Player {
       dataNeedInTime[i] = dataNeedInTime[i-1] * state.dataMulti;
     }
 
-    calculateTowerPopulations();
-    calculateTowerDistances();
+    calculateTowerPopulations(player);
+    calculateTowerDistances(player);
 
     myTowers = new HashSet<>();
     towersUnderOffer = new HashSet<>();
     towerOffers = new HashMap<>();
-    numberOfTowerOffers = new int[Decl.TOWER_MAX];
+    numberOfTowerOffers = new int[player.inputData.header.numTowers];
   }
 
   public static void makeMove(TPlayer player) {
@@ -64,7 +64,7 @@ public class JaniPlayer extends Player {
   }
 
   // NOTE overlapping towers not taken into consideration
-  private static void calculateTowerPopulations() {
+  private static void calculateTowerPopulations(TPlayer player) {
     // calculating total populations
     towerPopulations = new int[Decl.TIME_MAX][][];
     effectiveMaxRadius = Math.min(state.distMax - state.distMin, MAX_RADIUS_RANGE); // radius counted from distmin
@@ -73,12 +73,12 @@ public class JaniPlayer extends Player {
     int maximumDistance = (int)Math.sqrt(squaredMaximumDistance);
 
     for (int time = 0; time < Decl.TIME_MAX; time++) {
-      towerPopulations[time] = new int[Decl.TOWER_MAX][effectiveMaxRadius+1];
+      towerPopulations[time] = new int[player.inputData.header.numTowers][effectiveMaxRadius+1];
     }
 
     for (int x = 0; x < Decl.MAP_SIZE; x++) {
       for (int y = 0; y < Decl.MAP_SIZE; y++) {
-        for (int actualTower = 0; actualTower < Decl.TOWER_MAX; actualTower++) {
+        for (int actualTower = 0; actualTower < player.inputData.header.numTowers; actualTower++) {
           // if a map point can not be used by a tower, skip
           int squaredDistance = MapUtils.calculateSquaredDistance(x, y, map.towers[actualTower][0], map.towers[actualTower][1]);
           if (squaredDistance > squaredMaximumDistance) continue;
@@ -94,8 +94,8 @@ public class JaniPlayer extends Player {
     }
   }
 
-  private static void calculateTowerDistances() {
-    towerDistances = new short[Decl.TOWER_MAX][Decl.TOWER_MAX];
+  private static void calculateTowerDistances(TPlayer player) {
+    towerDistances = new short[player.inputData.header.numTowers][player.inputData.header.numTowers];
     for (short i = 0; i < towerDistances.length; i++) {
       for (short j = 0; j < towerDistances.length; j++) {
         towerDistances[i][j] = (short)Math.sqrt(MapUtils.calculateSquaredDistance(map.towers[i][0],map.towers[i][1],map.towers[j][0],map.towers[j][1]));
