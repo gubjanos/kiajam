@@ -68,7 +68,9 @@ public class JaniPlayer extends Player {
     // calculating total populations
     towerPopulations = new int[Decl.TIME_MAX][][];
     effectiveMaxRadius = Math.min(state.distMax - state.distMin, MAX_RADIUS_RANGE); // radius counted from distmin
+
     int squaredMaximumDistance = effectiveMaxRadius * effectiveMaxRadius + state.distMin * state.distMin; // squared maximum distance from a tower
+    int maximumDistance = (int)Math.sqrt(squaredMaximumDistance);
 
     for (int time = 0; time < Decl.TIME_MAX; time++) {
       towerPopulations[time] = new int[Decl.TOWER_MAX][effectiveMaxRadius];
@@ -82,7 +84,7 @@ public class JaniPlayer extends Player {
           if (squaredDistance < squaredMaximumDistance) continue;
 
           int trueDistance = (int) Math.sqrt(squaredDistance);
-          for (int actualDistance = trueDistance; actualDistance < squaredMaximumDistance; actualDistance++) {
+          for (int actualDistance = trueDistance; actualDistance < maximumDistance; actualDistance++) {
             for (int time = 0; time < Decl.TIME_MAX; time++) {
               towerPopulations[time][actualTower][actualDistance] += populations[time][x][y];
             }
