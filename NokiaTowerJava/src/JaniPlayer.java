@@ -207,12 +207,12 @@ public class JaniPlayer extends Player {
     }
   }
 
-  public static class EnemyAwareTowerUtils extends TowerUtils {
+  public static class EnemyAwareTowerUtils {
     public static double profitOfTower(short towerID, float rentingCost, float offer, short distance, int time, TPlayer player) {
       if (distance < state.distMin) return -rentingCost;
-      double cost = costOfTower(towerID, rentingCost, distance, player);
+      double cost = TowerUtils.costOfTower(towerID, rentingCost, distance, player);
       // TODO: do something with distances here
-      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(4, dataTechnology - 1), (short)(distance-state.distMin), time, offer);
+      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(4, dataTechnology - 1), (short)(distance-state.distMin), time, offer, player);
       //System.out.println("For tower: " + towerID + "cost: " + cost + "revenue: " + revenue);
       return revenue - cost;
     }
@@ -234,6 +234,10 @@ public class JaniPlayer extends Player {
         overlapLoss += overlap;
       }
       return towerPopulations[time][towerID][distance] * offer * (1.0d - overlapLoss) / 1_000_000;
+    }
+
+    public static double actualProfitOfTower(short towerID, TPlayer player) {
+      return EnemyAwareTowerUtils.profitOfTower(towerID, (float)state.dataTech, player.inputData.towerInf[towerID].offer, player.inputData.towerInf[towerID].distance, player.myTime, player);
     }
   }
 
@@ -276,9 +280,11 @@ public class JaniPlayer extends Player {
   public static class TowerInfo {
     public short id;
     public double profit;
-    public TowerInfo(short id, double profit) {
+    public short distance;
+    public TowerInfo(short id, double profit, short distance) {
       this.id = id;
       this.profit = profit;
+      this.distance = distance;
     }
     public static class TowerInfoComparator implements Comparator<TowerInfo> {
 
@@ -301,7 +307,7 @@ public class JaniPlayer extends Player {
 
     // check if the owned towers still worth it
     for (Short towerID : myTowers) {
-      if (TowerUtils.actualProfitOfTower(towerID, player) > 0) secureTowers.add(towerID);
+      if (EnemyAwareTowerUtils.actualProfitOfTower(towerID, player) > 0) secureTowers.add(towerID);
       else notWorthItTowers.add(towerID);
     }
 
@@ -314,23 +320,37 @@ public class JaniPlayer extends Player {
       //System.out.println(actualTowerInf.owner);
       if (actualTowerInf.owner == player.ID) continue; // for now skip our towers
       if (actualTowerInf.owner != 0) continue; // for now skip attacks
-      double profitNextSteps = 0.0d;
-      // NOTE not checking if all profit is positive
-      profitNextSteps += EnemyAwareTowerUtils.profitOfTower(i, (float) state.rentingMin, (float) player.inputData.header.offerMax, player.myTime, player);
-      profitNextSteps += EnemyAwareTowerUtils.profitOfTower(i, (float) state.rentingMin, (float) player.inputData.header.offerMax, player.myTime + 1, player);
-      profitNextSteps += EnemyAwareTowerUtils.profitOfTower(i, (float) state.rentingMin, (float) player.inputData.header.offerMax, player.myTime + 2, player);
-      //System.out.println("TowerID: " + i + "profit: " + profitNextSteps);
-      if (profitNextSteps < 0) continue; // does not worth it!
-      towers.add(new TowerInfo(i, profitNextSteps));
+
+
+      short maxDistance = TowerUtils.maximumDistance(i, state.dataTech, player.myTime);
+      double maximumProfit = 0.0d;
+      TowerInfo maximumInfo = null;
+      for (short distance = (short)state.distMin; distance < maxDistance; distance++) {
+        double profitNextSteps = 0.0d;
+        // NOTE not checking if all profit is positive
+        profitNextSteps += EnemyAwareTowerUtils.profitOfTower(i, (float) state.rentingMin, (float) player.inputData.header.offerMax, distance,
+            player.myTime, player);
+        profitNextSteps += EnemyAwareTowerUtils.profitOfTower(i, (float) state.rentingMin, (float) player.inputData.header.offerMax, distance,
+            player.myTime + 1, player);
+        profitNextSteps += EnemyAwareTowerUtils.profitOfTower(i, (float) state.rentingMin, (float) player.inputData.header.offerMax, distance,
+            player.myTime + 2, player);
+        if (profitNextSteps > maximumProfit) {
+          maximumProfit = profitNextSteps;
+          maximumInfo = new TowerInfo(i, profitNextSteps, distance);
+        }
+      }
+
+      if (maximumProfit < 1.0) continue; // does not worth it!
+      towers.add(maximumInfo);
     }
 
     Collections.sort(towers, new TowerInfo.TowerInfoComparator());
     for (TowerInfo t : towers) {
       //System.out.println("TowerID: " + i + "profit: " + profitNextSteps);
       // buy as long as we can
-      if (state.money - MIN_MONEY >  state.rentingMin * 3 + TowerUtils.costOfTower(t.id, state.rentingMin, TowerUtils.maximumDistance(t.id, state.dataTech, player.myTime), player)) {
-        player.rentTower(t.id, (float)state.rentingMin, TowerUtils.maximumDistance(t.id, state.dataTech, player.myTime), (float)player.inputData.header.offerMax);
-        state.money -= state.rentingMin * 3 + TowerUtils.costOfTower(t.id, state.rentingMin, TowerUtils.maximumDistance(t.id, state.dataTech, player.myTime), player); // cost of caution
+      if (state.money - MIN_MONEY >  state.rentingMin * 3 + TowerUtils.costOfTower(t.id, state.rentingMin, t.distance, player)) {
+        player.rentTower(t.id, (float)state.rentingMin, t.distance, (float)player.inputData.header.offerMax);
+        state.money -= state.rentingMin * 3 + TowerUtils.costOfTower(t.id, state.rentingMin, t.distance, player); // cost of caution
       }
     }
 
