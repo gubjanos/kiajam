@@ -323,6 +323,8 @@ public class JaniPlayer extends Player {
   }
 
   private static void mostBasicStrategy(TPlayer player) {
+    // TODO: do it better
+    if (player.myTime > state.timeMax - 2) return; // panic!
     // TODO: defend secure towers
     Set<Short> secureTowers = new HashSet<>();
     Set<Short> notWorthItTowers = new HashSet<>();
