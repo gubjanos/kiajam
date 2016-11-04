@@ -92,7 +92,7 @@ public class JaniPlayer extends Player {
         for (int actualTower = 0; actualTower < player.inputData.header.numTowers; actualTower++) {
           // if a map point can not be used by a tower, skip
           // y-x switch in the map!
-          int squaredDistance = MapUtils.calculateSquaredDistance(x, y, map.towers[actualTower][0], map.towers[actualTower][1]);
+          int squaredDistance = MapUtils.calculateSquaredDistance(x, y, map.towers[actualTower][1], map.towers[actualTower][0]);
           if (squaredDistance > squaredMaximumDistance) continue;
 
           int trueDistance = (int) Math.sqrt(squaredDistance - state.distMin * state.distMin);
@@ -287,7 +287,7 @@ public class JaniPlayer extends Player {
     for (TowerInfo t : towers) {
       //System.out.println("TowerID: " + i + "profit: " + profitNextSteps);
       // buy as long as we can
-      if (myTowers.size() < 2 && player.outputData.numOrders < 2 && state.money - MIN_MONEY >  state.rentingMin * 3 + TowerUtils.costOfTower(t.id, state.rentingMin, TowerUtils.maximumDistance(t.id, state.dataTech, player.myTime), player)) {
+      if (state.money - MIN_MONEY >  state.rentingMin * 3 + TowerUtils.costOfTower(t.id, state.rentingMin, TowerUtils.maximumDistance(t.id, state.dataTech, player.myTime), player)) {
         player.rentTower(t.id, (float)state.rentingMin, TowerUtils.maximumDistance(t.id, state.dataTech, player.myTime), (float)player.inputData.header.offerMax);
         state.money -= state.rentingMin * 3 + TowerUtils.costOfTower(t.id, state.rentingMin, TowerUtils.maximumDistance(t.id, state.dataTech, player.myTime), player); // cost of caution
       }
