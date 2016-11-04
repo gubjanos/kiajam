@@ -324,17 +324,16 @@ public class JaniPlayer extends Player {
 
   private static void mostBasicStrategy(TPlayer player) {
     // TODO: do it better
-    if (player.myTime > state.timeMax - 2) return; // panic!
+    int LOOKAHEAD = 3;
+    if (player.myTime > state.timeMax - LOOKAHEAD) return; // panic!
     // TODO: defend secure towers
     Set<Short> secureTowers = new HashSet<>();
     Set<Short> notWorthItTowers = new HashSet<>();
 
     // check if the owned towers still worth it
     for (Short towerID : myTowers) {
-      double profitNextSteps = 0.0d;
-      profitNextSteps += EnemyAwareTowerUtils.profitOfTower(towerID, (float)state.dataTech, player.inputData.towerInf[towerID].offer, player.inputData.towerInf[towerID].distance, player.myTime, player);
-      profitNextSteps += EnemyAwareTowerUtils.profitOfTower(towerID, (float)state.dataTech, player.inputData.towerInf[towerID].offer, player.inputData.towerInf[towerID].distance, player.myTime+1, player);
-      profitNextSteps += EnemyAwareTowerUtils.profitOfTower(towerID, (float)state.dataTech, player.inputData.towerInf[towerID].offer, player.inputData.towerInf[towerID].distance, player.myTime+2, player);
+      double profitNextSteps = getProfitNextSteps(player, towerID, (float) state.dataTech,
+          player.inputData.towerInf[towerID].offer, player.inputData.towerInf[towerID].distance, LOOKAHEAD);
       if (profitNextSteps < 1.0) secureTowers.add(towerID);
       else notWorthItTowers.add(towerID);
     }
@@ -356,14 +355,8 @@ public class JaniPlayer extends Player {
 
       for (short distance = (short)state.distMin; distance < maxDistance; distance++) {
         // TODO: checking different offer levels
-        double profitNextSteps = 0.0d;
-        // NOTE not checking if all profit is positive
-        profitNextSteps += EnemyAwareTowerUtils.profitOfTower(i, (float) state.rentingMin, (float) player.inputData.header.offerMax, distance,
-            player.myTime, player);
-        profitNextSteps += EnemyAwareTowerUtils.profitOfTower(i, (float) state.rentingMin, (float) player.inputData.header.offerMax, distance,
-            player.myTime + 1, player);
-        profitNextSteps += EnemyAwareTowerUtils.profitOfTower(i, (float) state.rentingMin, (float) player.inputData.header.offerMax, distance,
-            player.myTime + 2, player);
+        double profitNextSteps = getProfitNextSteps(player, i, (float) state.rentingMin,
+            (float) player.inputData.header.offerMax, distance, LOOKAHEAD);
         if (profitNextSteps > maximumProfit) {
           maximumProfit = profitNextSteps;
           maximumInfo = new TowerInfo(i, profitNextSteps, distance);
@@ -393,14 +386,8 @@ public class JaniPlayer extends Player {
 
       for (short distance = (short)state.distMin; distance < maxDistance; distance++) {
         // TODO: checking different offer levels
-        double profitNextSteps = 0.0d;
-        // NOTE not checking if all profit is positive
-        profitNextSteps += EnemyAwareTowerUtils.profitOfTower(towerID, (float) state.rentingMin, (float) player.inputData.header.offerMax, distance,
-            player.myTime, player);
-        profitNextSteps += EnemyAwareTowerUtils.profitOfTower(towerID, (float) state.rentingMin, (float) player.inputData.header.offerMax, distance,
-            player.myTime + 1, player);
-        profitNextSteps += EnemyAwareTowerUtils.profitOfTower(towerID, (float) state.rentingMin, (float) player.inputData.header.offerMax, distance,
-            player.myTime + 2, player);
+        double profitNextSteps = getProfitNextSteps(player, towerID, (float) state.rentingMin,
+            (float) player.inputData.header.offerMax, distance, LOOKAHEAD);
         if (profitNextSteps > maximumProfit) {
           maximumProfit = profitNextSteps;
           maximumInfo = new TowerInfo(towerID, profitNextSteps, distance);
@@ -415,6 +402,17 @@ public class JaniPlayer extends Player {
       myTowers.remove(towerID);
       player.leaveTower(towerID);
     }
+  }
+
+  private static double getProfitNextSteps(TPlayer player, Short towerID, float dataTech,
+      float offer, short distance, int aheadSteps) {
+    double profitNextSteps = 0.0d;
+    for (int i = 0; i < aheadSteps; i++) {
+      profitNextSteps += EnemyAwareTowerUtils
+          .profitOfTower(towerID, dataTech, offer, distance, player.myTime + i, player);
+    }
+
+    return profitNextSteps;
   }
 
   // strategies section
