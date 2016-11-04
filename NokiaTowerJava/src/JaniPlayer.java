@@ -211,8 +211,7 @@ public class JaniPlayer extends Player {
     public static double profitOfTower(short towerID, float rentingCost, float offer, short distance, int time, TPlayer player) {
       if (distance < state.distMin) return -rentingCost;
       double cost = TowerUtils.costOfTower(towerID, rentingCost, distance, player);
-      // TODO: do something with distances here
-      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(4, dataTechnology - 1), (short)(distance-state.distMin), time, offer, player);
+      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(4, dataTechnology - 1), (distance), time, offer, player);
       //System.out.println("For tower: " + towerID + "cost: " + cost + "revenue: " + revenue);
       return revenue - cost;
     }
@@ -225,7 +224,8 @@ public class JaniPlayer extends Player {
         if (i == towerID) continue;
         TtowerInfRec actualInfo = player.inputData.towerInf[i];
         if (actualInfo.offer > offer) continue; // they will take ours
-        if (actualInfo.owner == 0) continue; // nobody uses this
+        //if (actualInfo.owner == 0) continue; // nobody uses this
+        // checking orders here
         double overlap = getOverlapFraction(map.towers[towerID][1], map.towers[towerID][0], map.towers[i][1], map.towers[i][0], distance, actualInfo.distance);
         if (overlap > 0.05d) {
           int x = 1;
@@ -233,7 +233,7 @@ public class JaniPlayer extends Player {
         // overlap, complex calculations happens here
         overlapLoss += overlap;
       }
-      return towerPopulations[time][towerID][distance] * offer * (1.0d - overlapLoss) / 1_000_000;
+      return towerPopulations[time][towerID][distance - state.distMin] * offer * (1.0d - overlapLoss) / 1_000_000;
     }
 
     public static double actualProfitOfTower(short towerID, TPlayer player) {
