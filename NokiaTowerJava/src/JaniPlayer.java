@@ -18,7 +18,15 @@ public class JaniPlayer extends Player {
   private static int[] numberOfTowerOffers; // the number of offers on the towers
 
   // otletek: tornyonkent kiszamolni range-ekre az osszlakossagot koronkent: 200 * 365 * RANGE => 0.07MB * range
-  private static final int MAX_RADIUS_RANGE = 100;
+  private static final int MAX_RADIUS_RANGE = 15;
+
+  private static int[][] cloneIntArray (int[][] input){
+    int[][] result = new int[input.length][];
+    for (int i = 0; i < result.length; i++) {
+      result[i] = input[i].clone();
+    }
+    return result;
+  }
 
   private static void init(TPlayer player) {
     // initialize characteristics
@@ -26,16 +34,17 @@ public class JaniPlayer extends Player {
 
     map = player.map;
     populations = new int[Decl.TIME_MAX][][];
-    populations[0] = map.pop;
+    populations[0] = cloneIntArray(map.pop);
 
     // calculating populations in advance
     for (int i = 1; i < Decl.TIME_MAX; i++) {
-      populations[i] = MapUtils.popNextTime(populations[i-1], map);
+      map.MapNextTime();
+      populations[i] = cloneIntArray(map.pop);
     }
 
     // calculating data need increasement
     dataNeedInTime = new double[Decl.TIME_MAX];
-    dataNeedInTime[0] = 1.0d;
+    dataNeedInTime[0] = state.dataNeed;
     for (int i = 1; i < Decl.TIME_MAX; i++) {
       dataNeedInTime[i] = dataNeedInTime[i-1] * state.dataMulti;
     }
@@ -49,8 +58,10 @@ public class JaniPlayer extends Player {
     numberOfTowerOffers = new int[player.inputData.header.numTowers];
   }
 
+  static boolean isinitialized = false;
   public static void makeMove(TPlayer player) {
     // note using Tplayer as persistent state
+    System.out.println("money: " + player.inputData.header.money);
     if (player.myTime == 0) {
       long t = System.currentTimeMillis();
       init(player);
@@ -80,11 +91,12 @@ public class JaniPlayer extends Player {
       for (int y = 0; y < Decl.MAP_SIZE; y++) {
         for (int actualTower = 0; actualTower < player.inputData.header.numTowers; actualTower++) {
           // if a map point can not be used by a tower, skip
+          // y-x switch in the map!
           int squaredDistance = MapUtils.calculateSquaredDistance(x, y, map.towers[actualTower][0], map.towers[actualTower][1]);
           if (squaredDistance > squaredMaximumDistance) continue;
 
-          int trueDistance = (int) Math.sqrt(squaredDistance);
-          for (int actualDistance = trueDistance; actualDistance < maximumDistance; actualDistance++) {
+          int trueDistance = (int) Math.sqrt(squaredDistance - state.distMin * state.distMin);
+          for (int actualDistance = trueDistance; actualDistance <= maximumDistance; actualDistance++) {
             for (int time = 0; time < Decl.TIME_MAX; time++) {
               towerPopulations[time][actualTower][actualDistance] += populations[time][x][y];
             }
@@ -120,13 +132,13 @@ public class JaniPlayer extends Player {
 
     // revenue with a given offer level
     public static double revenueOfTower(short towerID, double dataTech, short distance, int time, double offer) {
-      return towerPopulations[time][towerID][distance] * offer;
+      return towerPopulations[time][towerID][distance] * offer / 1_000_000;
     }
 
     // cost of tower
     // calculated with a given renting offer
     public static double costOfTower(short towerID, double rentingOffer, short distance, TPlayer player) {
-      return player.inputData.towerInf[towerID].runningCost * distance + rentingOffer;
+      return rentingOffer; //player.inputData.towerInf[towerID].runningCost * distance + rentingOffer;
     }
 
     // profit of tower with actual state
@@ -150,8 +162,8 @@ public class JaniPlayer extends Player {
       if (distance < state.distMin) return -rentingCost;
       double cost = costOfTower(towerID, rentingCost, distance, player);
       // TODO: do something with distances here
-      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(4, dataTechnology - 1), (short)(distance - state.distMin), time, offer);
-      System.out.println("For tower: " + towerID + "cost: " + cost + "revenue: " + revenue);
+      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(4, dataTechnology - 1), (short)(distance-state.distMin), time, offer);
+      //System.out.println("For tower: " + towerID + "cost: " + cost + "revenue: " + revenue);
       return revenue - cost;
     }
   }
@@ -218,6 +230,29 @@ public class JaniPlayer extends Player {
     mostBasicStrategy(player);
   }
 
+  private static final int MIN_MONEY = 900;
+
+  public static class TowerInfo {
+    public short id;
+    public double profit;
+    public TowerInfo(short id, double profit) {
+      this.id = id;
+      this.profit = profit;
+    }
+    public static class TowerInfoComparator implements Comparator<TowerInfo> {
+
+      @Override
+      public int compare(TowerInfo o1, TowerInfo o2) {
+        return (int)(o2.profit - o1.profit);
+      }
+
+      @Override
+      public boolean equals(Object obj) {
+        if (! (obj instanceof TowerInfoComparator)) return false;
+        return true;
+      }
+    }
+  }
 
   private static void mostBasicStrategy(TPlayer player) {
     Set<Short> secureTowers = new HashSet<>();
@@ -229,26 +264,32 @@ public class JaniPlayer extends Player {
       else notWorthItTowers.add(towerID);
     }
 
-    System.out.println("number of towers:" + player.inputData.towerInf.length + "offermax: " + player.inputData.header.offerMax);
+    System.out.println("number of towers:" + player.inputData.header.numTowers + "offermax: " + player.inputData.header.offerMax);
 
+    ArrayList<TowerInfo> towers = new ArrayList<>();
     // check if we have towers to acquire
-    for (short i = 0; i < player.inputData.towerInf.length; i++) {
+    for (short i = 0; i < player.inputData.header.numTowers; i++) {
       TtowerInfRec actualTowerInf = player.inputData.towerInf[i];
       //System.out.println(actualTowerInf.owner);
       if (actualTowerInf.owner == player.ID) continue; // for now skip our towers
       if (actualTowerInf.owner != 0) continue; // for now skip attacks
       double profitNextSteps = 0.0d;
       // NOTE not checking if all profit is positive
-      profitNextSteps += TowerUtils.profitOfTower(i, (float)state.rentingMin, (float)player.inputData.header.offerMax, player.myTime, player);
-      profitNextSteps += TowerUtils.profitOfTower(i, (float)state.rentingMin, (float)player.inputData.header.offerMax, player.myTime+1, player);
-      profitNextSteps += TowerUtils.profitOfTower(i, (float)state.rentingMin, (float)player.inputData.header.offerMax, player.myTime+2, player);
+      profitNextSteps += TowerUtils.profitOfTower(i, (float) state.rentingMin, (float) player.inputData.header.offerMax, player.myTime, player);
+      profitNextSteps += TowerUtils.profitOfTower(i, (float) state.rentingMin, (float) player.inputData.header.offerMax, player.myTime + 1, player);
+      profitNextSteps += TowerUtils.profitOfTower(i, (float) state.rentingMin, (float) player.inputData.header.offerMax, player.myTime + 2, player);
       //System.out.println("TowerID: " + i + "profit: " + profitNextSteps);
       if (profitNextSteps < 0) continue; // does not worth it!
-      System.out.println("TowerID: " + i + "profit: " + profitNextSteps);
+      towers.add(new TowerInfo(i, profitNextSteps));
+    }
+
+    Collections.sort(towers, new TowerInfo.TowerInfoComparator());
+    for (TowerInfo t : towers) {
+      //System.out.println("TowerID: " + i + "profit: " + profitNextSteps);
       // buy as long as we can
-      if (state.money >  state.rentingMin) {
-        player.rentTower(i, (float)state.rentingMin, TowerUtils.maximumDistance(i, state.dataTech, player.myTime), (float)state.offerMax);
-        state.money -= 4 * state.rentingMin; // cost of caution
+      if (myTowers.size() < 2 && player.outputData.numOrders < 2 && state.money - MIN_MONEY >  state.rentingMin * 3 + TowerUtils.costOfTower(t.id, state.rentingMin, TowerUtils.maximumDistance(t.id, state.dataTech, player.myTime), player)) {
+        player.rentTower(t.id, (float)state.rentingMin, TowerUtils.maximumDistance(t.id, state.dataTech, player.myTime), (float)player.inputData.header.offerMax);
+        state.money -= state.rentingMin * 3 + TowerUtils.costOfTower(t.id, state.rentingMin, TowerUtils.maximumDistance(t.id, state.dataTech, player.myTime), player); // cost of caution
       }
     }
 

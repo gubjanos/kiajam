@@ -1,4 +1,5 @@
 public class MapUtils {
+  /*
   public static int[][] popNextTime(int[][] popActualTime, Map map) {
     // NOTE code cloned from Map.MapNextTime
     int[][] result = new int[Decl.MAP_SIZE][Decl.MAP_SIZE];
@@ -39,9 +40,15 @@ public class MapUtils {
           }
         }
       }
-
+    long totalPop = 0;
+    for (int y = 0; y < map.mapHeight; y++)
+      for (int x = 0; x < map.mapWidth; x++)
+        totalPop = totalPop + result[y][x];
+    System.out.println("Totalpop: " + totalPop);
+    map.mainTime++;
+    map.pop = result;
     return result;
-  }
+  }*/
 
   // Returns if a point (x1, y1) inside a (x2, y2) centered d radius circle
   public static boolean isInsideCircle(int x1, int y1, int x2, int y2, int radius) {
