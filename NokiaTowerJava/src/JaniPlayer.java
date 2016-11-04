@@ -96,12 +96,16 @@ public class JaniPlayer extends Player {
           if (squaredDistance > squaredMaximumDistance) continue;
 
           int trueDistance = (int) Math.sqrt(squaredDistance - state.distMin * state.distMin);
-          for (int actualDistance = trueDistance; actualDistance <= maximumDistance; actualDistance++) {
-            for (int time = 0; time < Decl.TIME_MAX; time++) {
-              towerPopulations[time][actualTower][actualDistance] += populations[time][x][y];
-            }
+          for (int time = 0; time < Decl.TIME_MAX; time++) {
+            towerPopulations[time][actualTower][trueDistance] += populations[time][x][y];
           }
         }
+      }
+    }
+
+    for (short i = 0; i < player.inputData.header.numTowers) {
+      for (int time = 0; time < Decl.TIME_MAX; time++) {
+        calculatePrefixSum(towerPopulations[time][i]);
       }
     }
   }
@@ -115,6 +119,12 @@ public class JaniPlayer extends Player {
     }
   }
 
+
+  private static void calculatePrefixSum(int[] array) {
+    for (int i = 1; i < array.length; i++) {
+      array[i] = array[i-1] + array[i];
+    }
+  }
 
   // NOTE: these methods are now not enemy-aware
   public static class TowerUtils {
