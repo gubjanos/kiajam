@@ -75,12 +75,13 @@ public class JaniPlayer extends Player {
       long t = System.currentTimeMillis();
       init(player);
       System.out.println("Initialization took " + (System.currentTimeMillis() - t) + " ms.");
+      player.myTime++;
+    } else {
+      System.out.println(player.myTime);
+      System.out.println("time: " + player.inputData.header.time + " total pop:" + player.map.totalPop);
+
+      stepInGame(player);
     }
-
-    System.out.println(player.myTime);
-    System.out.println("time: " + player.inputData.header.time + " total pop:" + player.map.totalPop);
-
-    stepInGame(player);
   }
 
   // NOTE overlapping towers not taken into consideration
@@ -92,13 +93,22 @@ public class JaniPlayer extends Player {
     int squaredMaximumDistance = effectiveMaxRadius * effectiveMaxRadius + state.distMin * state.distMin; // squared maximum distance from a tower
     int maximumDistance = (int)Math.sqrt(squaredMaximumDistance);
 
+    // number of towers not determined
+    int numberOfTowers = player.map.towers.length;
+    for (int i = 0; i < player.map.towers.length; i++) {
+      if (player.map.towers[i][0] == 0 && player.map.towers[i][1] == 0) {
+        numberOfTowers = i;
+        break;
+      }
+    }
+
     for (int time = 0; time < Decl.TIME_MAX; time++) {
-      towerPopulations[time] = new int[player.inputData.header.numTowers][effectiveMaxRadius+1];
+      towerPopulations[time] = new int[numberOfTowers][effectiveMaxRadius+1];
     }
 
     for (int x = 0; x < Decl.MAP_SIZE; x++) {
       for (int y = 0; y < Decl.MAP_SIZE; y++) {
-        for (int actualTower = 0; actualTower < player.inputData.header.numTowers; actualTower++) {
+        for (int actualTower = 0; actualTower < numberOfTowers; actualTower++) {
           // if a map point can not be used by a tower, skip
           // y-x switch in the map!
           int squaredDistance = MapUtils.calculateSquaredDistance(x, y, map.towers[actualTower][1], map.towers[actualTower][0]);
@@ -112,7 +122,7 @@ public class JaniPlayer extends Player {
       }
     }
 
-    for (short i = 0; i < player.inputData.header.numTowers; i++) {
+    for (short i = 0; i < numberOfTowers; i++) {
       for (int time = 0; time < Decl.TIME_MAX; time++) {
         calculatePrefixSum(towerPopulations[time][i]);
       }
@@ -120,7 +130,16 @@ public class JaniPlayer extends Player {
   }
 
   private static void calculateTowerDistances(TPlayer player) {
-    towerDistances = new short[player.inputData.header.numTowers][player.inputData.header.numTowers];
+    // number of towers not determined
+    int numberOfTowers = player.map.towers.length;
+    for (int i = 0; i < player.map.towers.length; i++) {
+      if (player.map.towers[i][0] == 0 && player.map.towers[i][1] == 0) {
+        numberOfTowers = i;
+        break;
+      }
+    }
+
+    towerDistances = new short[numberOfTowers][numberOfTowers];
     for (short i = 0; i < towerDistances.length; i++) {
       for (short j = 0; j < towerDistances.length; j++) {
         towerDistances[i][j] = (short)Math.sqrt(MapUtils.calculateSquaredDistance(map.towers[i][0],map.towers[i][1],map.towers[j][0],map.towers[j][1]));
@@ -266,13 +285,15 @@ public class JaniPlayer extends Player {
 
   private static void stepInGame(TPlayer player) {
     // set up game state
-    player.myTime++;
     validateTowers(player);
     clearLastOrder(player);
     state.money = player.inputData.header.money;
 
     // do something useful
     mostBasicStrategy(player);
+
+    // step time
+    player.myTime++;
   }
 
   private static final int MIN_MONEY = 900;
