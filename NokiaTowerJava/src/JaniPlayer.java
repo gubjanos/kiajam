@@ -211,15 +211,15 @@ public class JaniPlayer extends Player {
     public static double profitOfTower(short towerID, float rentingCost, float offer, short distance, int time, TPlayer player) {
       if (distance < state.distMin) return -rentingCost;
       double cost = costOfTower(towerID, rentingCost, distance, player);
-      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(4, dataTechnology - 1), distance, time, offer, player);
+      // TODO: do something with distances here
+      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(4, dataTechnology - 1), (short)(distance-state.distMin), time, offer);
+      //System.out.println("For tower: " + towerID + "cost: " + cost + "revenue: " + revenue);
       return revenue - cost;
     }
 
     // revenue with a given offer level
     // this method tries to take enemy towers into consideration, also could not infer the ownership and offer changes in future
     public static double revenueOfTower(short towerID, double dataTech, short distance, int time, double offer, TPlayer player) {
-      ArrayList<Short> towersToCheck = new ArrayList<>();
-
       double overlapLoss = 0.0d;
       for (short i = 0; i < player.inputData.header.numTowers; i++) {
         if (i == towerID) continue;
@@ -233,7 +233,7 @@ public class JaniPlayer extends Player {
         // overlap, complex calculations happens here
         overlapLoss += overlap;
       }
-      return towerPopulations[time][towerID][distance] * offer * (1.0d - overlapLoss);
+      return towerPopulations[time][towerID][distance] * offer * (1.0d - overlapLoss) / 1_000_000;
     }
   }
 
@@ -316,9 +316,9 @@ public class JaniPlayer extends Player {
       if (actualTowerInf.owner != 0) continue; // for now skip attacks
       double profitNextSteps = 0.0d;
       // NOTE not checking if all profit is positive
-      profitNextSteps += TowerUtils.profitOfTower(i, (float) state.rentingMin, (float) player.inputData.header.offerMax, player.myTime, player);
-      profitNextSteps += TowerUtils.profitOfTower(i, (float) state.rentingMin, (float) player.inputData.header.offerMax, player.myTime + 1, player);
-      profitNextSteps += TowerUtils.profitOfTower(i, (float) state.rentingMin, (float) player.inputData.header.offerMax, player.myTime + 2, player);
+      profitNextSteps += EnemyAwareTowerUtils.profitOfTower(i, (float) state.rentingMin, (float) player.inputData.header.offerMax, player.myTime, player);
+      profitNextSteps += EnemyAwareTowerUtils.profitOfTower(i, (float) state.rentingMin, (float) player.inputData.header.offerMax, player.myTime + 1, player);
+      profitNextSteps += EnemyAwareTowerUtils.profitOfTower(i, (float) state.rentingMin, (float) player.inputData.header.offerMax, player.myTime + 2, player);
       //System.out.println("TowerID: " + i + "profit: " + profitNextSteps);
       if (profitNextSteps < 0) continue; // does not worth it!
       towers.add(new TowerInfo(i, profitNextSteps));
