@@ -7,6 +7,8 @@ public class JaniPlayer extends Player {
   private static int[][][] towerPopulations; // time, tower, radius initialized by method calculateTowerPopulations
   private static short[][] towerDistances; // towerA, towerB, the distance between the two tower
 
+  private static double[][] towerOverlaps; // towerA, towerB, the overlap between the two tower
+
   private static double[] dataNeedInTime; // time, the data need factor in time
   private static int dataTechnology = 1;
 
@@ -26,6 +28,14 @@ public class JaniPlayer extends Player {
       result[i] = input[i].clone();
     }
     return result;
+  }
+
+  public Tower[] towerInfos;
+
+  public static class Tower {
+    public short id;
+    public short[] closestTowers;
+    public double[] overlaps;
   }
 
   private static void init(TPlayer player) {
@@ -58,7 +68,6 @@ public class JaniPlayer extends Player {
     numberOfTowerOffers = new int[player.inputData.header.numTowers];
   }
 
-  static boolean isinitialized = false;
   public static void makeMove(TPlayer player) {
     // note using Tplayer as persistent state
     System.out.println("money: " + player.inputData.header.money);
@@ -124,6 +133,25 @@ public class JaniPlayer extends Player {
     for (int i = 1; i < array.length; i++) {
       array[i] = array[i-1] + array[i];
     }
+  }
+
+  // This method is an approximation only. it returns the overlap between circles c1 and c2, wrt area of c1
+  public static double getOverlapFraction(int x1, int y1, int x2, int y2, short r1, short r2) {
+    double distance = Math.sqrt(MapUtils.calculateSquaredDistance(x1, y1, x2, y2));
+    if (distance > r1 + r2) return 0.0d;
+    double biggerRadius = Math.max(r1,r2);
+    if (biggerRadius >= distance) return 1.0d; // approximation here!
+    // calculation of overlap here
+    double s = (r1 + r2 + distance) / 2;
+    double param1 = ((r2 * r2) - (r1 * r1) - (distance * distance)) / (-2.0 * r1 * distance);
+    double alpha = 2 * Math.acos(param1);
+    double param2 = ((r1 * r1) - (r2 * r2) - (distance * distance)) / (-2.0 * r2 * distance);
+    double beta = 2 * Math.acos(param2);
+    double t1 = (r1 * r1) * alpha / 2;
+    double t2 = (r2 * r2) * alpha / 2;
+    double t3 = Math.sqrt(s * (s - r1) * (s - r2) * (s-distance));
+    double tCommon = t1 + t2 - 2 * t3;
+    return tCommon / t1;
   }
 
   // NOTE: these methods are now not enemy-aware
@@ -192,18 +220,20 @@ public class JaniPlayer extends Player {
     public static double revenueOfTower(short towerID, double dataTech, short distance, int time, double offer, TPlayer player) {
       ArrayList<Short> towersToCheck = new ArrayList<>();
 
+      double overlapLoss = 0.0d;
       for (short i = 0; i < player.inputData.header.numTowers; i++) {
         if (i == towerID) continue;
         TtowerInfRec actualInfo = player.inputData.towerInf[i];
         if (actualInfo.offer > offer) continue; // they will take ours
-        if (towerDistances[towerID][i] > distance
-            && towerDistances[towerID][i] > maximumDistance(i, state.dataTech * Math.pow(4, actualInfo.techLevel - 1), time))
-          continue; // no overlap
-
+        if (actualInfo.owner == 0) continue; // nobody uses this
+        double overlap = getOverlapFraction(map.towers[towerID][1], map.towers[towerID][0], map.towers[i][1], map.towers[i][0], distance, actualInfo.distance);
+        if (overlap > 0.05d) {
+          int x = 1;
+        }
         // overlap, complex calculations happens here
-        return 0; // TODO: do the complex calculations
+        overlapLoss += overlap;
       }
-      return towerPopulations[time][towerID][distance] * offer;
+      return towerPopulations[time][towerID][distance] * offer * (1.0d - overlapLoss);
     }
   }
 
