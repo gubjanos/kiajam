@@ -18,7 +18,7 @@ public class JaniPlayer extends Player {
   private static int[] numberOfTowerOffers; // the number of offers on the towers
 
   // otletek: tornyonkent kiszamolni range-ekre az osszlakossagot koronkent: 200 * 365 * RANGE => 0.07MB * range
-  private static final int MAX_RADIUS_RANGE = 15;
+  private static final int MAX_RADIUS_RANGE = 25;
 
   private static int[][] cloneIntArray (int[][] input){
     int[][] result = new int[input.length][];
@@ -147,8 +147,9 @@ public class JaniPlayer extends Player {
 
     // cost of tower
     // calculated with a given renting offer
+    private static final double RUNNINGPRICE = 100 / 2500; // running price for max distance
     public static double costOfTower(short towerID, double rentingOffer, short distance, TPlayer player) {
-      return rentingOffer; //player.inputData.towerInf[towerID].runningCost * distance + rentingOffer;
+      return rentingOffer + RUNNINGPRICE * (distance * distance); //player.inputData.towerInf[towerID].runningCost * distance + rentingOffer;
     }
 
     // profit of tower with actual state
