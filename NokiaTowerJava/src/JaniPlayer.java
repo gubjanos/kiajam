@@ -323,12 +323,17 @@ public class JaniPlayer extends Player {
   }
 
   private static void mostBasicStrategy(TPlayer player) {
+    // TODO: defend secure towers
     Set<Short> secureTowers = new HashSet<>();
     Set<Short> notWorthItTowers = new HashSet<>();
 
     // check if the owned towers still worth it
     for (Short towerID : myTowers) {
-      if (EnemyAwareTowerUtils.actualProfitOfTower(towerID, player) > 0) secureTowers.add(towerID);
+      double profitNextSteps = 0.0d;
+      profitNextSteps += EnemyAwareTowerUtils.profitOfTower(towerID, (float)state.dataTech, player.inputData.towerInf[towerID].offer, player.inputData.towerInf[towerID].distance, player.myTime, player);
+      profitNextSteps += EnemyAwareTowerUtils.profitOfTower(towerID, (float)state.dataTech, player.inputData.towerInf[towerID].offer, player.inputData.towerInf[towerID].distance, player.myTime+1, player);
+      profitNextSteps += EnemyAwareTowerUtils.profitOfTower(towerID, (float)state.dataTech, player.inputData.towerInf[towerID].offer, player.inputData.towerInf[towerID].distance, player.myTime+2, player);
+      if (profitNextSteps < 1.0) secureTowers.add(towerID);
       else notWorthItTowers.add(towerID);
     }
 
@@ -346,7 +351,9 @@ public class JaniPlayer extends Player {
       short maxDistance = TowerUtils.maximumDistance(i, state.dataTech, player.myTime);
       double maximumProfit = 0.0d;
       TowerInfo maximumInfo = null;
+
       for (short distance = (short)state.distMin; distance < maxDistance; distance++) {
+        // TODO: checking different offer levels
         double profitNextSteps = 0.0d;
         // NOTE not checking if all profit is positive
         profitNextSteps += EnemyAwareTowerUtils.profitOfTower(i, (float) state.rentingMin, (float) player.inputData.header.offerMax, distance,
@@ -377,6 +384,32 @@ public class JaniPlayer extends Player {
 
     // leave not worth it towers
     for (Short towerID : notWorthItTowers) {
+      // TODO: checking modifications on distance/offer for each tower as improvement
+      short maxDistance = TowerUtils.maximumDistance(towerID, state.dataTech, player.myTime);
+      double maximumProfit = 0.0d;
+      TowerInfo maximumInfo = null;
+
+      for (short distance = (short)state.distMin; distance < maxDistance; distance++) {
+        // TODO: checking different offer levels
+        double profitNextSteps = 0.0d;
+        // NOTE not checking if all profit is positive
+        profitNextSteps += EnemyAwareTowerUtils.profitOfTower(towerID, (float) state.rentingMin, (float) player.inputData.header.offerMax, distance,
+            player.myTime, player);
+        profitNextSteps += EnemyAwareTowerUtils.profitOfTower(towerID, (float) state.rentingMin, (float) player.inputData.header.offerMax, distance,
+            player.myTime + 1, player);
+        profitNextSteps += EnemyAwareTowerUtils.profitOfTower(towerID, (float) state.rentingMin, (float) player.inputData.header.offerMax, distance,
+            player.myTime + 2, player);
+        if (profitNextSteps > maximumProfit) {
+          maximumProfit = profitNextSteps;
+          maximumInfo = new TowerInfo(towerID, profitNextSteps, distance);
+        }
+      }
+      if (maximumProfit > 1.0) {
+        player.rentTower(towerID, player.inputData.towerInf[towerID].rentingCost, maximumInfo.distance, player.inputData.towerInf[towerID].offer);
+        continue; // does worth it!
+      }
+
+      // does not worth it!
       myTowers.remove(towerID);
       player.leaveTower(towerID);
     }
