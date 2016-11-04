@@ -103,7 +103,7 @@ public class JaniPlayer extends Player {
       }
     }
 
-    for (short i = 0; i < player.inputData.header.numTowers) {
+    for (short i = 0; i < player.inputData.header.numTowers; i++) {
       for (int time = 0; time < Decl.TIME_MAX; time++) {
         calculatePrefixSum(towerPopulations[time][i]);
       }
