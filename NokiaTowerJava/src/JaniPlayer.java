@@ -231,7 +231,7 @@ public class JaniPlayer extends Player {
       ArrayList<Float> offers = new ArrayList<>();
       for (int i = 0; i < player.inputData.header.numTowers; i++) {
         double overlap = getOverlapFraction(map.towers[towerID][1], map.towers[towerID][0], map.towers[i][1], map.towers[i][0], distance, distance);
-        if (overlap > 0.0d) offers.add(player.inputData.towerInf[i].offer);
+        if (overlap > 0.05d) offers.add(player.inputData.towerInf[i].offer);
       }
       return offers;
     }
@@ -362,7 +362,7 @@ public class JaniPlayer extends Player {
       double maximumProfit = 0.0d;
       TowerInfo maximumInfo = null;
 
-      for (short distance = (short)state.distMin; distance < maxDistance; distance++) {
+      for (short distance = (short)state.distMin; distance < effectiveMaxRadius; distance++) {
         // checking for playing out overlaps
         for (Float offer : EnemyAwareTowerUtils.getNearbyOffers(i, distance, player)) {
           double profitNextSteps = getProfitNextSteps(player, i, (float) state.rentingMin,
@@ -401,7 +401,7 @@ public class JaniPlayer extends Player {
     // leave not worth it towers
     for (Short towerID : notWorthItTowers) {
       // TODO: checking modifications on distance/offer for each tower as improvement
-      short maxDistance = TowerUtils.maximumDistance(towerID, state.dataTech, player.myTime);
+      /*short maxDistance = TowerUtils.maximumDistance(towerID, state.dataTech, player.myTime);
       double maximumProfit = 0.0d;
       TowerInfo maximumInfo = null;
 
@@ -417,7 +417,7 @@ public class JaniPlayer extends Player {
       if (maximumProfit > 1.0) {
         player.rentTower(towerID, player.inputData.towerInf[towerID].rentingCost, maximumInfo.distance, player.inputData.towerInf[towerID].offer);
         continue; // does worth it!
-      }
+      }*/
 
       // does not worth it!
       myTowers.remove(towerID);
