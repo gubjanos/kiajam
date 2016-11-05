@@ -227,6 +227,15 @@ public class JaniPlayer extends Player {
   }
 
   public static class EnemyAwareTowerUtils {
+    public static List<Float> getNearbyOffers(short towerID, short distance, TPlayer player) {
+      ArrayList<Float> offers = new ArrayList<>();
+      for (int i = 0; i < player.inputData.header.numTowers; i++) {
+        double overlap = getOverlapFraction(map.towers[towerID][1], map.towers[towerID][0], map.towers[i][1], map.towers[i][0], distance, distance);
+        if (overlap > 0.0d) offers.add(player.inputData.towerInf[i].offer);
+      }
+      return offers;
+    }
+
     public static double profitOfTower(short towerID, float rentingCost, float offer, short distance, int time, TPlayer player) {
       if (distance < state.distMin) return -rentingCost;
       double cost = TowerUtils.costOfTower(towerID, rentingCost, distance, player);
@@ -354,7 +363,17 @@ public class JaniPlayer extends Player {
       TowerInfo maximumInfo = null;
 
       for (short distance = (short)state.distMin; distance < maxDistance; distance++) {
-        // TODO: checking different offer levels
+        // checking for playing out overlaps
+        for (Float offer : EnemyAwareTowerUtils.getNearbyOffers(i, distance, player)) {
+          double profitNextSteps = getProfitNextSteps(player, i, (float) state.rentingMin,
+              (float) offer - 1.0f, distance, LOOKAHEAD);
+          if (profitNextSteps > maximumProfit) {
+            maximumProfit = profitNextSteps;
+            maximumInfo = new TowerInfo(i, profitNextSteps, distance);
+          }
+        }
+
+        // going for high order
         double profitNextSteps = getProfitNextSteps(player, i, (float) state.rentingMin,
             (float) player.inputData.header.offerMax, distance, LOOKAHEAD);
         if (profitNextSteps > maximumProfit) {
@@ -366,6 +385,8 @@ public class JaniPlayer extends Player {
       if (maximumProfit < 1.0) continue; // does not worth it!
       towers.add(maximumInfo);
     }
+
+    // TODO: attack
 
     Collections.sort(towers, new TowerInfo.TowerInfoComparator());
     for (TowerInfo t : towers) {
