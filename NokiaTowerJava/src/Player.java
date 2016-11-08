@@ -363,12 +363,12 @@ public class Player {
       return offers;
     }
 
-    public static double profitOfTower(short towerID, float rentingCost, float offer, short distance, int time, TPlayer player) {
-      if (distance < state.distMin) return -rentingCost;
+    public static double[] profitOfTower(short towerID, float rentingCost, float offer, short distance, int time, TPlayer player) {
+      if (distance < state.distMin) return new double[] {0, -rentingCost}; // TODO the cost is not exact!
       double cost = TowerUtils.costOfTower(towerID, rentingCost, distance, player);
       double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(state.dataMulti, dataTechnology - 1), (distance), time, offer, player);
       //System.out.println("For tower: " + towerID + "cost: " + cost + "revenue: " + revenue);
-      return revenue - cost;
+      return new double[] {revenue, cost};
     }
 
     // revenue with a given offer level
@@ -395,8 +395,9 @@ public class Player {
     }
 
     public static double actualProfitOfTower(short towerID, TPlayer player) {
-      return EnemyAwareTowerUtils.profitOfTower(towerID, (float)state.dataTech, player.inputData.towerInf[towerID].offer, player.inputData.towerInf[towerID].distance, player.myTime, player);
-    }
+      double stats[] = EnemyAwareTowerUtils.profitOfTower(towerID, (float)state.dataTech, player.inputData.towerInf[towerID].offer, player.inputData.towerInf[towerID].distance, player.myTime, player);
+    	return stats[1] - stats[0];
+		}
   }
 
   // validating orders and checking gathered towers
@@ -451,9 +452,10 @@ public class Player {
     public short distance;
 		public float offer;
 		public float rentingCost;
-		public float cost; // cost of the current action
+		public float actionCost; // the cost of the current action
+		public float cost; // the total cost in the next n rounds
 
-    public TowerInfo(short id, double profit, short distance, Type type, float offer, float rentingCost, float cost) {
+    public TowerInfo(short id, double profit, short distance, Type type, float offer, float rentingCost, float cost, float actionCost) {
       this.id = id;
       this.profit = profit;
       this.distance = distance;
@@ -461,6 +463,7 @@ public class Player {
 			this.offer = offer;
 			this.rentingCost = rentingCost;
 			this.cost = cost;
+			this.actionCost = actionCost;
     }
     public static class TowerInfoComparator implements Comparator<TowerInfo> {
 
@@ -502,9 +505,9 @@ public class Player {
 
     // check if the owned towers still worth it
     for (Short towerID : myTowers) {
-      double profitNextSteps = getProfitNextSteps(player, towerID, player.inputData.towerInf[towerID].rentingCost,
+      double[] stats = getProfitNextSteps(player, towerID, player.inputData.towerInf[towerID].rentingCost,
           player.inputData.towerInf[towerID].offer, player.inputData.towerInf[towerID].distance, LOOKAHEAD);
-      if (profitNextSteps < MINIMUM_PROFIT) secureTowers.add(towerID);
+      if (stats[0] - stats[1] < MINIMUM_PROFIT) secureTowers.add(towerID);
       else notWorthItTowers.add(towerID);
     }
 
@@ -512,6 +515,7 @@ public class Player {
 
 		System.out.println("number of towers:" + player.inputData.header.numTowers + "offermax: " + player.inputData.header.offerMax);
 
+		// DEFEND
 		for (short i = 0; i < player.inputData.towerInf.length; i++) {
 			if (player.inputData.towerInf[i].owner == player.ID && player.inputData.towerInf[i].licit > 0.0f
 					&& player.inputData.towerInf[i].licitDelay == 1) {
@@ -520,10 +524,10 @@ public class Player {
 				float offer = player.inputData.towerInf[i].offer;
 				short distance = player.inputData.towerInf[i].distance;
 				float rentingCost = player.inputData.towerInf[i].rentingCost;
-				double estimatedProfit = getProfitNextSteps(player, i, licit, offer, distance, LOOKAHEAD);
+				double[] stats = getProfitNextSteps(player, i, licit, offer, distance, LOOKAHEAD);
 
-				if (estimatedProfit > MINIMUM_PROFIT) {
-					towers.add(new TowerInfo(i, estimatedProfit, player.inputData.towerInf[i].distance, TowerInfo.Type.DEFEND, offer, licit, licit - rentingCost));
+				if (stats[0] - stats[1] > MINIMUM_PROFIT) {
+					towers.add(new TowerInfo(i, stats[0] - stats[1], player.inputData.towerInf[i].distance, TowerInfo.Type.DEFEND, offer, licit, (float)stats[1],licit - rentingCost));
 				}
 			}
 		}
@@ -553,11 +557,11 @@ public class Player {
         }*/
 
         // going for high order
-        double profitNextSteps = getProfitNextSteps(player, i, (float) state.rentingMin,
+        double[] stats = getProfitNextSteps(player, i, (float) state.rentingMin,
             (float) player.inputData.header.offerMax, distance, LOOKAHEAD);
-        if (profitNextSteps > maximumProfit) {
-          maximumProfit = profitNextSteps;
-          maximumInfo = new TowerInfo(i, profitNextSteps, distance, TowerInfo.Type.ACQUIRE, (float)player.inputData.header.offerMax, (float)state.rentingMin, (float)state.rentingMin * 4);
+        if (stats[0] - stats[1] > maximumProfit) {
+          maximumProfit = stats[0] - stats[1];
+          maximumInfo = new TowerInfo(i, stats[0] - stats[1], distance, TowerInfo.Type.ACQUIRE, (float)player.inputData.header.offerMax, (float)state.rentingMin, (float)stats[1], (float)state.rentingMin * 4);
         }
       }
 
@@ -580,10 +584,10 @@ public class Player {
 			short maxDistance = TowerUtils.maximumDistance(i, state.dataTech, player.myTime);
 
 			for (short distance = (short)state.distMin; distance < maxDistance; distance+= RADIUS_APPROXIMATION) {
-				double profitNextSteps = getProfitNextSteps(player, i, percentage * player.inputData.towerInf[i].rentingCost, (float)player.inputData.header.offerMax, distance, LOOKAHEAD);
-				if (profitNextSteps > maximumProfit) {
-					maximumProfit = profitNextSteps;
-					maximumInfo = new TowerInfo(i, profitNextSteps, distance, TowerInfo.Type.ATTACK, (float)player.inputData.header.offerMax, percentage * player.inputData.towerInf[i].rentingCost, percentage * player.inputData.towerInf[i].rentingCost * 4);
+				double[] stats = getProfitNextSteps(player, i, percentage * player.inputData.towerInf[i].rentingCost, (float)player.inputData.header.offerMax, distance, LOOKAHEAD);
+				if (stats[0] - stats[1] > maximumProfit) {
+					maximumProfit = stats[0] - stats[1];
+					maximumInfo = new TowerInfo(i, stats[0] - stats[1], distance, TowerInfo.Type.ATTACK, (float)player.inputData.header.offerMax, percentage * player.inputData.towerInf[i].rentingCost, (float)stats[1], percentage * player.inputData.towerInf[i].rentingCost * 4);
 				}
 			}
 
@@ -629,15 +633,18 @@ public class Player {
     }
   }
 
-  private static double getProfitNextSteps(TPlayer player, Short towerID, float rentingCost,
+  private static double[] getProfitNextSteps(TPlayer player, Short towerID, float rentingCost,
       float offer, short distance, int aheadSteps) {
-    double profitNextSteps = 0.0d;
+    double revenue = 0.0d;
+		double cost = 0.0d;
     for (int i = 0; i < aheadSteps; i++) {
-      profitNextSteps += EnemyAwareTowerUtils
+      double stats[] = EnemyAwareTowerUtils
           .profitOfTower(towerID, rentingCost, offer, distance, player.myTime + i, player);
+			revenue += stats[0];
+			cost += stats[1];
     }
 
-    return profitNextSteps;
+    return new double[]{revenue, cost};
   }
 
 	private static void updateDataTechState(TPlayer player) {
