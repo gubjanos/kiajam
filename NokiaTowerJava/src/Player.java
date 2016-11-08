@@ -7,17 +7,13 @@ public class Player {
   private static int[][][] towerPopulations; // time, tower, radius initialized by method calculateTowerPopulations
   private static short[][] towerDistances; // towerA, towerB, the distance between the two tower
 
-  private static double[][] towerOverlaps; // towerA, towerB, the overlap between the two tower
-
   private static double[] dataNeedInTime; // time, the data need factor in time
   private static int dataTechnology = 1;
 
   private static int effectiveMaxRadius;
 
   private static Set<Short> myTowers; // the set of towers owned
-  private static Set<Short> towersUnderOffer; // the towers we are offering to
   private static java.util.Map<Integer, TtowerOrderRec> towerOffers; // the offers given for towers
-  private static int[] numberOfTowerOffers; // the number of offers on the towers
 
   // otletek: tornyonkent kiszamolni range-ekre az osszlakossagot koronkent: 200 * 365 * RANGE => 0.07MB * range
   private static final int MAX_RADIUS_RANGE = 5;
@@ -77,9 +73,7 @@ public class Player {
 			calculateTowerDistances(player);
 
 			myTowers = new HashSet<>();
-			towersUnderOffer = new HashSet<>();
 			towerOffers = new HashMap<>();
-			numberOfTowerOffers = new int[player.inputData.header.numTowers];
 		}
 
 		// NOTE overlapping towers not taken into consideration
@@ -176,14 +170,13 @@ public class Player {
 			calculateTowerDistances(player);
 
 			myTowers = new HashSet<>();
-			towersUnderOffer = new HashSet<>();
 			towerOffers = new HashMap<>();
-			numberOfTowerOffers = new int[player.inputData.header.numTowers];
 			lastTime += lookahead;
 		}
 
 		public static void doLookahead(TPlayer player, int lookahead) {
 			if (lastTime + lookahead > Decl.TIME_MAX) return; // skipping if there is no lookahead
+			lookahead = Math.min(Decl.TIME_MAX - lastTime, lookahead); // checking for upper boundary
 			calculateTowerPopulations(player, lookahead);
 			lastTime += lookahead;
 		}
@@ -219,7 +212,7 @@ public class Player {
 						if (squaredDistance > squaredMaximumDistance) continue;
 
 						int trueDistance = (int) Math.sqrt(squaredDistance - state.distMin * state.distMin);
-						for (int time = lastTime; time < lookAhead; time++) {
+						for (int time = lastTime; time < lastTime + lookAhead; time++) {
 							towerPopulations[time][actualTower][trueDistance] += populations[time][x][y];
 						}
 					}
@@ -227,7 +220,7 @@ public class Player {
 			}
 
 			for (short i = 0; i < numberOfTowers; i++) {
-				for (int time = lastTime; time < lookAhead; time++) {
+				for (int time = lastTime; time < lastTime + lookAhead; time++) {
 					calculatePrefixSum(towerPopulations[time][i]);
 				}
 			}
