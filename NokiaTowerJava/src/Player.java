@@ -460,7 +460,7 @@ public class Player {
 
       @Override
       public int compare(TowerInfo o1, TowerInfo o2) {
-        return (int)(o2.profit - o1.profit);
+        return (int)(o2.profit/o2.cost - o1.profit/o1.cost);
       }
 
       @Override
@@ -558,6 +558,7 @@ public class Player {
     }
 
     // TODO: attack
+
 
     Collections.sort(towers, new TowerInfo.TowerInfoComparator());
     for (TowerInfo t : towers) {
