@@ -16,7 +16,7 @@ public class Player {
   private static java.util.Map<Integer, TtowerOrderRec> towerOffers; // the offers given for towers
 
   // otletek: tornyonkent kiszamolni range-ekre az osszlakossagot koronkent: 200 * 365 * RANGE => 0.07MB * range
-  private static final int MAX_RADIUS_RANGE = 30;
+  private static final int MAX_RADIUS_RANGE = 50;
   private static final int RADIUS_APPROXIMATION = 5; // the stepsize between radiuses
 
   private static int[][] cloneIntArray (int[][] input){
@@ -251,7 +251,7 @@ public class Player {
     System.out.println("money: " + player.inputData.header.money);
     if (player.myTime == 0) {
       long t = System.currentTimeMillis();
-      IterativeInitializationProcess.init(player, LOOKAHEAD);
+        IterativeInitializationProcess.init(player, LOOKAHEAD);
       System.out.println("Initialization took " + (System.currentTimeMillis() - t) + " ms.");
       player.myTime++;
     } else {
@@ -457,7 +457,7 @@ public class Player {
 
   private static void mostBasicStrategy(TPlayer player) {
     // TODO: do it better
-    int LOOKAHEAD = 3;
+    int LOOKAHEAD = 5;
     if (player.myTime > state.timeMax - LOOKAHEAD) return; // panic!
     // TODO: defend secure towers
     Set<Short> secureTowers = new HashSet<>();
@@ -488,14 +488,14 @@ public class Player {
 
       for (short distance = (short)state.distMin; distance < effectiveMaxRadius; distance+= RADIUS_APPROXIMATION) {
         // checking for playing out overlaps
-        for (Float offer : EnemyAwareTowerUtils.getNearbyOffers(i, distance, player)) {
+        /*for (Float offer : EnemyAwareTowerUtils.getNearbyOffers(i, distance, player)) {
           double profitNextSteps = getProfitNextSteps(player, i, (float) state.rentingMin,
               (float) offer - 1.0f, distance, LOOKAHEAD);
           if (profitNextSteps > maximumProfit) {
             maximumProfit = profitNextSteps;
             maximumInfo = new TowerInfo(i, profitNextSteps, distance);
           }
-        }
+        }*/
 
         // going for high order
         double profitNextSteps = getProfitNextSteps(player, i, (float) state.rentingMin,
