@@ -455,11 +455,23 @@ public class Player {
     }
   }
 
+	private static Random strategyR = new Random(43);
+	private static float INVEST_PROB = 0.5f;
+
   private static void mostBasicStrategy(TPlayer player) {
-    // TODO: do it better
+
+
+		// TODO: do it better
     int LOOKAHEAD = 5;
     if (player.myTime > state.timeMax - LOOKAHEAD) return; // panic!
-    // TODO: defend secure towers
+		// invest
+		if (state.dataTech < state.techLevelMax-1 && state.money > state.techCosts[(int)(state.dataTech+1)] && strategyR.nextFloat() > INVEST_PROB) {
+			float inv = (float) (strategyR.nextFloat() * state.money / 10);
+			player.outputData.invest = inv;
+			state.money -= inv;
+		}
+
+		// TODO: defend secure towers
     Set<Short> secureTowers = new HashSet<>();
     Set<Short> notWorthItTowers = new HashSet<>();
 
