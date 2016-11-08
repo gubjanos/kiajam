@@ -344,7 +344,7 @@ public class Player {
       if (distance < state.distMin) return -rentingCost;
       double cost = costOfTower(towerID, rentingCost, distance, player);
       // TODO: do something with distances here
-      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(4, dataTechnology - 1), (short)(distance-state.distMin), time, offer);
+      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(state.dataMulti, dataTechnology - 1), (short)(distance-state.distMin), time, offer);
       //System.out.println("For tower: " + towerID + "cost: " + cost + "revenue: " + revenue);
       return revenue - cost;
     }
@@ -363,7 +363,7 @@ public class Player {
     public static double profitOfTower(short towerID, float rentingCost, float offer, short distance, int time, TPlayer player) {
       if (distance < state.distMin) return -rentingCost;
       double cost = TowerUtils.costOfTower(towerID, rentingCost, distance, player);
-      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(4, dataTechnology - 1), (distance), time, offer, player);
+      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(state.dataMulti, dataTechnology - 1), (distance), time, offer, player);
       //System.out.println("For tower: " + towerID + "cost: " + cost + "revenue: " + revenue);
       return revenue - cost;
     }
@@ -420,6 +420,7 @@ public class Player {
     // set up game state
     validateTowers(player);
     clearLastOrder(player);
+		updateDataTechState(player);
     state.money = player.inputData.header.money;
 
     // do something useful
@@ -464,11 +465,13 @@ public class Player {
 		// TODO: do it better
     int LOOKAHEAD = 5;
     if (player.myTime > state.timeMax - LOOKAHEAD) return; // panic!
+
 		// invest
 		if (state.dataTech < state.techLevelMax-1 && state.money > state.techCosts[(int)(state.dataTech+1)] && strategyR.nextFloat() > INVEST_PROB) {
 			float inv = (float) (strategyR.nextFloat() * state.money / 10);
 			player.outputData.invest = inv;
 			state.money -= inv;
+
 		}
 
 		// TODO: defend secure towers
@@ -571,6 +574,14 @@ public class Player {
 
     return profitNextSteps;
   }
+
+	private static void updateDataTechState(TPlayer player) {
+		for (int i = 0; i < state.techCosts.length; i++) {
+			if (player.inputData.header.resPoints > state.techCosts[i]) {
+				dataTechnology = i;
+			}
+		}
+	}
 
   // strategies section
   // these section is responsible for generating different strategies, the final player will be a combination of these
