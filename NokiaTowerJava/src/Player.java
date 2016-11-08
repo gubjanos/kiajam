@@ -16,7 +16,7 @@ public class Player {
   private static java.util.Map<Integer, TtowerOrderRec> towerOffers; // the offers given for towers
 
   // otletek: tornyonkent kiszamolni range-ekre az osszlakossagot koronkent: 200 * 365 * RANGE => 0.07MB * range
-  private static final int MAX_RADIUS_RANGE = 5;
+  private static final int MAX_RADIUS_RANGE = 50;
 
   private static int[][] cloneIntArray (int[][] input){
     int[][] result = new int[input.length][];
@@ -183,19 +183,20 @@ public class Player {
 		}
 	}
 
+	private static final int LOOKAHEAD = 5; // TODO this is a parameter of the script
 
   public static void makeMove(TPlayer player) {
     // note using Tplayer as persistent state
     System.out.println("money: " + player.inputData.header.money);
     if (player.myTime == 0) {
       long t = System.currentTimeMillis();
-      LongInitializationProcess.init(player);
+      IterativeInitializationProcess.init(player, LOOKAHEAD);
       System.out.println("Initialization took " + (System.currentTimeMillis() - t) + " ms.");
       player.myTime++;
     } else {
       System.out.println(player.myTime);
       System.out.println("time: " + player.inputData.header.time + " total pop:" + player.map.totalPop);
-
+			IterativeInitializationProcess.doLookahead(player, 1);
       stepInGame(player);
     }
   }
@@ -208,6 +209,7 @@ public class Player {
   }
 
   // This method is an approximation only. it returns the overlap between circles c1 and c2, wrt area of c1
+	// TODO: eliminate approximation
   public static double getOverlapFraction(int x1, int y1, int x2, int y2, short r1, short r2) {
     double distance = Math.sqrt(MapUtils.calculateSquaredDistance(x1, y1, x2, y2));
     if (distance > r1 + r2) return 0.0d;
