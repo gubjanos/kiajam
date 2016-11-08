@@ -237,6 +237,7 @@ public class Player {
 			for (short i = 0; i < numberOfTowers; i++) {
 				for (int time = lastTime; time < lastTime + lookAhead; time++) {
 					calculatePrefixSum(towerPopulations[time][i]);
+					multiplyArray(towerPopulations[time][i], (int)(1.0f/skipVal));
 				}
 			}
 		}
@@ -269,6 +270,12 @@ public class Player {
       array[i] = array[i-1] + array[i];
     }
   }
+
+	private static void multiplyArray(int[] array, int multiplier) {
+		for (int i = 0; i < array.length; i++) {
+			array[i] *= multiplier;
+		}
+	}
 
   // This method is an approximation only. it returns the overlap between circles c1 and c2, wrt area of c1
 	// TODO: eliminate approximation
