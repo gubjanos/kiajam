@@ -47,7 +47,7 @@ public class Player {
   }
 
 	// This class is responsible for long initialization version of the player
-	public static class LongInitializationProcess {
+	public static class LongInitializationProcess extends IterativeInitializationProcess{
 		public static void init(TPlayer player) {
 			// initialize characteristics
 			state = player.headerIni;
@@ -69,79 +69,17 @@ public class Player {
 				dataNeedInTime[i] = dataNeedInTime[i-1] * state.dataMulti;
 			}
 
-			calculateTowerPopulations(player);
+			calculateTowerPopulations(player, Decl.TIME_MAX);
 			calculateTowerDistances(player);
 
 			myTowers = new HashSet<>();
 			towerOffers = new HashMap<>();
 		}
-
-		// NOTE overlapping towers not taken into consideration
-		private static void calculateTowerPopulations(TPlayer player) {
-			// calculating total populations
-			towerPopulations = new int[Decl.TIME_MAX][][];
-			effectiveMaxRadius = Math.min(state.distMax - state.distMin, MAX_RADIUS_RANGE); // radius counted from distmin
-
-			int squaredMaximumDistance = effectiveMaxRadius * effectiveMaxRadius + state.distMin * state.distMin; // squared maximum distance from a tower
-			int maximumDistance = (int)Math.sqrt(squaredMaximumDistance);
-
-			// number of towers not determined
-			int numberOfTowers = player.map.towers.length;
-			for (int i = 0; i < player.map.towers.length; i++) {
-				if (player.map.towers[i][0] == 0 && player.map.towers[i][1] == 0) {
-					numberOfTowers = i;
-					break;
-				}
-			}
-
-			for (int time = 0; time < Decl.TIME_MAX; time++) {
-				towerPopulations[time] = new int[numberOfTowers][effectiveMaxRadius+1];
-			}
-
-			for (int x = 0; x < Decl.MAP_SIZE; x++) {
-				for (int y = 0; y < Decl.MAP_SIZE; y++) {
-					for (int actualTower = 0; actualTower < numberOfTowers; actualTower++) {
-						// if a map point can not be used by a tower, skip
-						// y-x switch in the map!
-						int squaredDistance = MapUtils.calculateSquaredDistance(x, y, map.towers[actualTower][1], map.towers[actualTower][0]);
-						if (squaredDistance > squaredMaximumDistance) continue;
-
-						int trueDistance = (int) Math.sqrt(squaredDistance - state.distMin * state.distMin);
-						for (int time = 0; time < Decl.TIME_MAX; time++) {
-							towerPopulations[time][actualTower][trueDistance] += populations[time][x][y];
-						}
-					}
-				}
-			}
-
-			for (short i = 0; i < numberOfTowers; i++) {
-				for (int time = 0; time < Decl.TIME_MAX; time++) {
-					calculatePrefixSum(towerPopulations[time][i]);
-				}
-			}
-		}
-
-		private static void calculateTowerDistances(TPlayer player) {
-			// number of towers not determined
-			int numberOfTowers = player.map.towers.length;
-			for (int i = 0; i < player.map.towers.length; i++) {
-				if (player.map.towers[i][0] == 0 && player.map.towers[i][1] == 0) {
-					numberOfTowers = i;
-					break;
-				}
-			}
-
-			towerDistances = new short[numberOfTowers][numberOfTowers];
-			for (short i = 0; i < towerDistances.length; i++) {
-				for (short j = 0; j < towerDistances.length; j++) {
-					towerDistances[i][j] = (short)Math.sqrt(MapUtils.calculateSquaredDistance(map.towers[i][0],map.towers[i][1],map.towers[j][0],map.towers[j][1]));
-				}
-			}
-		}
 	}
 
 
 	// Same like LongInitializationProcess, but some states are calculated iteratively
+	// NOTE! dont forget to call doLookup method
 	public static class IterativeInitializationProcess {
 		private static int lastTime;
 		public static void init(TPlayer player, int lookahead) {
@@ -182,7 +120,7 @@ public class Player {
 		}
 
 		// NOTE overlapping towers not taken into consideration
-		private static void calculateTowerPopulations(TPlayer player, int lookAhead) {
+		protected static void calculateTowerPopulations(TPlayer player, int lookAhead) {
 			// calculating total populations
 			towerPopulations = new int[Decl.TIME_MAX][][];
 			effectiveMaxRadius = Math.min(state.distMax - state.distMin, MAX_RADIUS_RANGE); // radius counted from distmin
@@ -226,7 +164,7 @@ public class Player {
 			}
 		}
 
-		private static void calculateTowerDistances(TPlayer player) {
+		protected static void calculateTowerDistances(TPlayer player) {
 			// number of towers not determined
 			int numberOfTowers = player.map.towers.length;
 			for (int i = 0; i < player.map.towers.length; i++) {
