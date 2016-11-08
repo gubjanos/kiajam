@@ -321,7 +321,7 @@ public class Player {
 
     // cost of tower
     // calculated with a given renting offer
-    private static final double RUNNINGPRICE = 100 / 2500; // running price for max distance
+    private static final double RUNNINGPRICE = 100.0d / 2500.0d; // running price for max distance
     public static double costOfTower(short towerID, double rentingOffer, short distance, TPlayer player) {
       return rentingOffer + RUNNINGPRICE * (distance * distance); //player.inputData.towerInf[towerID].runningCost * distance + rentingOffer;
     }
