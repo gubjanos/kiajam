@@ -382,7 +382,8 @@ public class Player {
         if (actualInfo.offer > offer) continue; // they will take ours
         double overlap;
 				if (actualInfo.owner == 0) {
-					 overlap = getOverlapFraction(map.towers[towerID][1], map.towers[towerID][0], map.towers[i][1], map.towers[i][0], distance, distance);
+                    overlap = 0.0;
+					 //overlap = getOverlapFraction(map.towers[towerID][1], map.towers[towerID][0], map.towers[i][1], map.towers[i][0], distance, distance);
 				} else {
 					// checking orders here
 					overlap = getOverlapFraction(map.towers[towerID][1], map.towers[towerID][0], map.towers[i][1],
@@ -469,7 +470,8 @@ public class Player {
 
       @Override
       public int compare(TowerInfo o1, TowerInfo o2) {
-        return (int)(o2.profit/o2.cost - o1.profit/o1.cost);
+
+          return (int)(o2.profit-o2.cost - (o1.profit-o1.cost))x;
       }
 
       @Override
