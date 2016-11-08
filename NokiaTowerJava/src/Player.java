@@ -288,7 +288,7 @@ public class Player {
     double param1 = ((r2 * r2) - (r1 * r1) - (distance * distance)) / (-2.0 * r1 * distance);
     double alpha = 2 * Math.acos(param1);
 		if (Double.isNaN(alpha)) {
-			if (r1 > r2) return (r1 * r1 / (r2 * r2));
+			if (r1 > r2) return ((r2 * r2)/(r1*r1));
 			else return 1.0f;
 		}
     double param2 = ((r1 * r1) - (r2 * r2) - (distance * distance)) / (-2.0 * r2 * distance);
@@ -379,7 +379,7 @@ public class Player {
         if (i == towerID) continue;
         TtowerInfRec actualInfo = player.inputData.towerInf[i];
         if (actualInfo.offer > offer) continue; // they will take ours
-        //if (actualInfo.owner == 0) continue; // nobody uses this
+        if (actualInfo.owner == 0) continue; // nobody uses this
         // checking orders here
         double overlap = getOverlapFraction(map.towers[towerID][1], map.towers[towerID][0], map.towers[i][1], map.towers[i][0], distance, actualInfo.distance);
         // overlap, complex calculations happens here
