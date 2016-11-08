@@ -283,18 +283,21 @@ public class Player {
     double distance = Math.sqrt(MapUtils.calculateSquaredDistance(x1, y1, x2, y2));
     if (distance > r1 + r2) return 0.0d;
     double biggerRadius = Math.max(r1,r2);
-    if (biggerRadius >= distance) return 1.0d; // approximation here!
     // calculation of overlap here
     double s = (r1 + r2 + distance) / 2;
     double param1 = ((r2 * r2) - (r1 * r1) - (distance * distance)) / (-2.0 * r1 * distance);
     double alpha = 2 * Math.acos(param1);
+		if (Double.isNaN(alpha)) {
+			if (r1 > r2) return (r1 * r1 / (r2 * r2));
+			else return 1.0f;
+		}
     double param2 = ((r1 * r1) - (r2 * r2) - (distance * distance)) / (-2.0 * r2 * distance);
     double beta = 2 * Math.acos(param2);
     double t1 = (r1 * r1) * alpha / 2;
-    double t2 = (r2 * r2) * alpha / 2;
+    double t2 = (r2 * r2) * beta / 2;
     double t3 = Math.sqrt(s * (s - r1) * (s - r2) * (s-distance));
     double tCommon = t1 + t2 - 2 * t3;
-    return tCommon / t1;
+		return tCommon / (t1 / alpha * 2 * 3.14f);
   }
 
   // NOTE: these methods are now not enemy-aware
