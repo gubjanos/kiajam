@@ -373,16 +373,22 @@ public class Player {
 
     // revenue with a given offer level
     // this method tries to take enemy towers into consideration, also could not infer the ownership and offer changes in future
+		// TODO: we are not aware of our own bids yet
     public static double revenueOfTower(short towerID, double dataTech, short distance, int time, double offer, TPlayer player) {
       double overlapLoss = 0.0d;
       for (short i = 0; i < player.inputData.header.numTowers; i++) {
         if (i == towerID) continue;
         TtowerInfRec actualInfo = player.inputData.towerInf[i];
         if (actualInfo.offer > offer) continue; // they will take ours
-        if (actualInfo.owner == 0) continue; // nobody uses this
-        // checking orders here
-        double overlap = getOverlapFraction(map.towers[towerID][1], map.towers[towerID][0], map.towers[i][1], map.towers[i][0], distance, actualInfo.distance);
-        // overlap, complex calculations happens here
+        double overlap;
+				if (actualInfo.owner == 0) {
+					 overlap = getOverlapFraction(map.towers[towerID][1], map.towers[towerID][0], map.towers[i][1], map.towers[i][0], distance, distance);
+				} else {
+					// checking orders here
+					overlap = getOverlapFraction(map.towers[towerID][1], map.towers[towerID][0], map.towers[i][1],
+							map.towers[i][0], distance, actualInfo.distance);
+				}
+				// overlap, complex calculations happens here
         overlapLoss += overlap;
       }
       return towerPopulations[time][towerID][distance - state.distMin] * offer * (1.0d - overlapLoss) / 1_000_000;
