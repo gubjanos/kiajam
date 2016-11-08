@@ -27,12 +27,12 @@ public class NokiaTower {
 
             Comm.readIniData(player);
             player.init();
-            JaniPlayer.makeMove(player);
+            Player.makeMove(player);
             Comm.writeData(player);
 
             while (Comm.readData(player) != 0) {
                 long t = System.currentTimeMillis();
-                JaniPlayer.makeMove(player);
+                Player.makeMove(player);
                 System.out.println("TIME TAKEN: " + (System.currentTimeMillis() - t));
                 Comm.writeData(player);
 
