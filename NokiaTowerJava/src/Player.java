@@ -257,7 +257,7 @@ public class Player {
       System.out.println(player.myTime);
       System.out.println("time: " + player.inputData.header.time + " total pop:" + player.map.totalPop);
         long t = System.currentTimeMillis();
-        IterativeInitializationProcess.doLookahead(player, 1);
+        ApproximativeLookahead.doLookahead(player, 1);
         System.out.println("Lookahead done in:" + (System.currentTimeMillis() - t));
       stepInGame(player);
     }
