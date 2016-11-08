@@ -379,9 +379,6 @@ public class Player {
         //if (actualInfo.owner == 0) continue; // nobody uses this
         // checking orders here
         double overlap = getOverlapFraction(map.towers[towerID][1], map.towers[towerID][0], map.towers[i][1], map.towers[i][0], distance, actualInfo.distance);
-        if (overlap > 0.05d) {
-          int x = 1;
-        }
         // overlap, complex calculations happens here
         overlapLoss += overlap;
       }
@@ -433,13 +430,28 @@ public class Player {
   private static final int MIN_MONEY = 900;
 
   public static class TowerInfo {
+		enum Type {
+			DEFEND,
+			ATTACK,
+			ACQUIRE
+		}
+
+		public Type type;
     public short id;
     public double profit;
     public short distance;
-    public TowerInfo(short id, double profit, short distance) {
+		public float offer;
+		public float rentingCost;
+		public float cost; // cost of the current action
+
+    public TowerInfo(short id, double profit, short distance, Type type, float offer, float rentingCost, float cost) {
       this.id = id;
       this.profit = profit;
       this.distance = distance;
+			this.type = type;
+			this.offer = offer;
+			this.rentingCost = rentingCost;
+			this.cost = cost;
     }
     public static class TowerInfoComparator implements Comparator<TowerInfo> {
 
@@ -458,12 +470,12 @@ public class Player {
 
 	private static Random strategyR = new Random(43);
 	private static float INVEST_PROB = 0.5f;
+	private static float MINIMUM_PROFIT = 10f;
 
+	// TODO: it would be great to check the status of enemy players too!
   private static void mostBasicStrategy(TPlayer player) {
-
-
 		// TODO: do it better
-    int LOOKAHEAD = 5;
+    int LOOKAHEAD = 3;
     if (player.myTime > state.timeMax - LOOKAHEAD) return; // panic!
 
 		// invest
@@ -474,7 +486,6 @@ public class Player {
 
 		}
 
-		// TODO: defend secure towers
     Set<Short> secureTowers = new HashSet<>();
     Set<Short> notWorthItTowers = new HashSet<>();
 
@@ -482,13 +493,31 @@ public class Player {
     for (Short towerID : myTowers) {
       double profitNextSteps = getProfitNextSteps(player, towerID, (float) state.dataTech,
           player.inputData.towerInf[towerID].offer, player.inputData.towerInf[towerID].distance, LOOKAHEAD);
-      if (profitNextSteps < 1.0) secureTowers.add(towerID);
+      if (profitNextSteps < MINIMUM_PROFIT) secureTowers.add(towerID);
       else notWorthItTowers.add(towerID);
     }
 
-    System.out.println("number of towers:" + player.inputData.header.numTowers + "offermax: " + player.inputData.header.offerMax);
+		ArrayList<TowerInfo> towers = new ArrayList<>();
 
-    ArrayList<TowerInfo> towers = new ArrayList<>();
+		System.out.println("number of towers:" + player.inputData.header.numTowers + "offermax: " + player.inputData.header.offerMax);
+
+		for (short i = 0; i < player.inputData.towerInf.length; i++) {
+			if (player.inputData.towerInf[i].owner == player.ID && player.inputData.towerInf[i].licit > 0.0f
+					&& player.inputData.towerInf[i].licitDelay == 1) {
+				// do something!
+				float licit = player.inputData.towerInf[i].licit;
+				float offer = player.inputData.towerInf[i].offer;
+				short distance = player.inputData.towerInf[i].distance;
+				float rentingCost = player.inputData.towerInf[i].rentingCost;
+				double estimatedProfit = getProfitNextSteps(player, i, licit, offer, distance, LOOKAHEAD);
+
+				if (estimatedProfit > MINIMUM_PROFIT) {
+					towers.add(new TowerInfo(i, estimatedProfit, player.inputData.towerInf[i].distance, TowerInfo.Type.DEFEND, offer, licit, licit - rentingCost));
+				}
+			}
+		}
+
+
     // check if we have towers to acquire
     for (short i = 0; i < player.inputData.header.numTowers; i++) {
       TtowerInfRec actualTowerInf = player.inputData.towerInf[i];
@@ -501,7 +530,7 @@ public class Player {
       double maximumProfit = 0.0d;
       TowerInfo maximumInfo = null;
 
-      for (short distance = (short)state.distMin; distance < effectiveMaxRadius; distance+= RADIUS_APPROXIMATION) {
+      for (short distance = (short)state.distMin; distance < maxDistance; distance+= RADIUS_APPROXIMATION) {
         // checking for playing out overlaps
         /*for (Float offer : EnemyAwareTowerUtils.getNearbyOffers(i, distance, player)) {
           double profitNextSteps = getProfitNextSteps(player, i, (float) state.rentingMin,
@@ -517,11 +546,11 @@ public class Player {
             (float) player.inputData.header.offerMax, distance, LOOKAHEAD);
         if (profitNextSteps > maximumProfit) {
           maximumProfit = profitNextSteps;
-          maximumInfo = new TowerInfo(i, profitNextSteps, distance);
+          maximumInfo = new TowerInfo(i, profitNextSteps, distance, TowerInfo.Type.ACQUIRE, (float)player.inputData.header.offerMax, (float)state.rentingMin, (float)state.rentingMin * 4);
         }
       }
 
-      if (maximumProfit < 1.0) continue; // does not worth it!
+      if (maximumProfit < MINIMUM_PROFIT) continue; // does not worth it!
       towers.add(maximumInfo);
     }
 
@@ -531,9 +560,9 @@ public class Player {
     for (TowerInfo t : towers) {
       //System.out.println("TowerID: " + i + "profit: " + profitNextSteps);
       // buy as long as we can
-      if (state.money - MIN_MONEY >  state.rentingMin * 3 + TowerUtils.costOfTower(t.id, state.rentingMin, t.distance, player)) {
+      if (state.money - MIN_MONEY >  state.rentingMin * 4) {
         player.rentTower(t.id, (float)state.rentingMin, t.distance, (float)player.inputData.header.offerMax);
-        state.money -= state.rentingMin * 3 + TowerUtils.costOfTower(t.id, state.rentingMin, t.distance, player); // cost of caution
+        state.money -= state.rentingMin * 4; // cost of caution
       }
     }
 
