@@ -117,12 +117,18 @@ public class Player {
 			if (lastTime + lookahead > Decl.TIME_MAX) return; // skipping if there is no lookahead
 			lookahead = Math.min(Decl.TIME_MAX - lastTime, lookahead); // checking for upper boundary
 			calculateTowerPopulations(player, lookahead);
-			lastTime += lookahead;
+			lastTime += 1;
 		}
+
 
 		// NOTE overlapping towers not taken into consideration
 		protected static void calculateTowerPopulations(TPlayer player, int lookAhead) {
 			// calculating total populations
+			// This step is for taking of load from the first initializing step, and making still possible to lookup in the next part of the game
+			final int TOWER_DIVISOR = 10;
+			short towerMod = -1;
+			if (lookAhead < TOWER_DIVISOR) towerMod = (short)(player.myTime % TOWER_DIVISOR);
+
 			if (towerPopulations == null) towerPopulations = new int[Decl.TIME_MAX][][];
 			effectiveMaxRadius = Math.min(state.distMax - state.distMin, MAX_RADIUS_RANGE); // radius counted from distmin
 
@@ -139,28 +145,50 @@ public class Player {
 			}
 
 			for (int time = lastTime; time < lastTime + lookAhead; time++) {
-				towerPopulations[time] = new int[numberOfTowers][effectiveMaxRadius+1];
+				if (towerPopulations[time] == null) towerPopulations[time] = new int[numberOfTowers][effectiveMaxRadius+1];
 			}
 
 			for (int x = 0; x < Decl.MAP_SIZE; x++) {
 				for (int y = 0; y < Decl.MAP_SIZE; y++) {
-					for (int actualTower = 0; actualTower < numberOfTowers; actualTower++) {
-						// if a map point can not be used by a tower, skip
-						// y-x switch in the map!
-						int squaredDistance = MapUtils.calculateSquaredDistance(x, y, map.towers[actualTower][1], map.towers[actualTower][0]);
-						if (squaredDistance > squaredMaximumDistance) continue;
+					if (towerMod == -1) {
+						for (int actualTower = 0; actualTower < numberOfTowers; actualTower++) {
+							// if a map point can not be used by a tower, skip
+							// y-x switch in the map!
+							int squaredDistance = MapUtils.calculateSquaredDistance(x, y, map.towers[actualTower][1], map.towers[actualTower][0]);
+							if (squaredDistance > squaredMaximumDistance) continue;
 
-						int trueDistance = (int) Math.sqrt(squaredDistance - state.distMin * state.distMin);
-						for (int time = lastTime; time < lastTime + lookAhead; time++) {
-							towerPopulations[time][actualTower][trueDistance] += populations[time][x][y];
+							int trueDistance = (int) Math.sqrt(squaredDistance - state.distMin * state.distMin);
+							for (int time = lastTime; time < lastTime + lookAhead; time++) {
+								towerPopulations[time][actualTower][trueDistance] += populations[time][x][y];
+							}
+						}
+					} else {
+						for (int actualTower = towerMod; actualTower < numberOfTowers; actualTower+=TOWER_DIVISOR) {
+							// if a map point can not be used by a tower, skip
+							// y-x switch in the map!
+							int squaredDistance = MapUtils.calculateSquaredDistance(x, y, map.towers[actualTower][1], map.towers[actualTower][0]);
+							if (squaredDistance > squaredMaximumDistance) continue;
+
+							int trueDistance = (int) Math.sqrt(squaredDistance - state.distMin * state.distMin);
+							for (int time = lastTime; time < lastTime + lookAhead; time++) {
+								towerPopulations[time][actualTower][trueDistance] += populations[time][x][y];
+							}
 						}
 					}
 				}
 			}
 
-			for (short i = 0; i < numberOfTowers; i++) {
-				for (int time = lastTime; time < lastTime + lookAhead; time++) {
-					calculatePrefixSum(towerPopulations[time][i]);
+			if (towerMod == -1) {
+				for (short i = 0; i < numberOfTowers; i++) {
+					for (int time = lastTime; time < lastTime + lookAhead; time++) {
+						calculatePrefixSum(towerPopulations[time][i]);
+					}
+				}
+			} else {
+				for (short i = towerMod; i < numberOfTowers; i+=towerMod) {
+					for (int time = lastTime; time < lastTime + lookAhead; time++) {
+						calculatePrefixSum(towerPopulations[time][i]);
+					}
 				}
 			}
 		}
@@ -191,14 +219,14 @@ public class Player {
     System.out.println("money: " + player.inputData.header.money);
     if (player.myTime == 0) {
       long t = System.currentTimeMillis();
-      IterativeInitializationProcess.init(player, LOOKAHEAD);
+      IterativeInitializationProcess.init(player, 10);
       System.out.println("Initialization took " + (System.currentTimeMillis() - t) + " ms.");
       player.myTime++;
     } else {
       System.out.println(player.myTime);
       System.out.println("time: " + player.inputData.header.time + " total pop:" + player.map.totalPop);
         long t = System.currentTimeMillis();
-        IterativeInitializationProcess.doLookahead(player, 1);
+        IterativeInitializationProcess.doLookahead(player, 10);
         System.out.println("Lookahead done in:" + (System.currentTimeMillis() - t));
       stepInGame(player);
     }
