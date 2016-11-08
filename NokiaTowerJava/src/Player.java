@@ -50,42 +50,215 @@ public class Player {
     }
   }
 
-  private static void init(TPlayer player) {
-    // initialize characteristics
-    state = player.headerIni;
+	// This class is responsible for long initialization version of the player
+	public static class LongInitializationProcess {
+		public static void init(TPlayer player) {
+			// initialize characteristics
+			state = player.headerIni;
 
-    map = player.map;
-    populations = new int[Decl.TIME_MAX][][];
-    populations[0] = cloneIntArray(map.pop);
+			map = player.map;
+			populations = new int[Decl.TIME_MAX][][];
+			populations[0] = cloneIntArray(map.pop);
 
-    // calculating populations in advance
-    for (int i = 1; i < Decl.TIME_MAX; i++) {
-      map.MapNextTime();
-      populations[i] = cloneIntArray(map.pop);
-    }
+			// calculating populations in advance
+			for (int i = 1; i < Decl.TIME_MAX; i++) {
+				map.MapNextTime();
+				populations[i] = cloneIntArray(map.pop);
+			}
 
-    // calculating data need increasement
-    dataNeedInTime = new double[Decl.TIME_MAX];
-    dataNeedInTime[0] = state.dataNeed;
-    for (int i = 1; i < Decl.TIME_MAX; i++) {
-      dataNeedInTime[i] = dataNeedInTime[i-1] * state.dataMulti;
-    }
+			// calculating data need increasement
+			dataNeedInTime = new double[Decl.TIME_MAX];
+			dataNeedInTime[0] = state.dataNeed;
+			for (int i = 1; i < Decl.TIME_MAX; i++) {
+				dataNeedInTime[i] = dataNeedInTime[i-1] * state.dataMulti;
+			}
 
-    calculateTowerPopulations(player);
-    calculateTowerDistances(player);
+			calculateTowerPopulations(player);
+			calculateTowerDistances(player);
 
-    myTowers = new HashSet<>();
-    towersUnderOffer = new HashSet<>();
-    towerOffers = new HashMap<>();
-    numberOfTowerOffers = new int[player.inputData.header.numTowers];
-  }
+			myTowers = new HashSet<>();
+			towersUnderOffer = new HashSet<>();
+			towerOffers = new HashMap<>();
+			numberOfTowerOffers = new int[player.inputData.header.numTowers];
+		}
+
+		// NOTE overlapping towers not taken into consideration
+		private static void calculateTowerPopulations(TPlayer player) {
+			// calculating total populations
+			towerPopulations = new int[Decl.TIME_MAX][][];
+			effectiveMaxRadius = Math.min(state.distMax - state.distMin, MAX_RADIUS_RANGE); // radius counted from distmin
+
+			int squaredMaximumDistance = effectiveMaxRadius * effectiveMaxRadius + state.distMin * state.distMin; // squared maximum distance from a tower
+			int maximumDistance = (int)Math.sqrt(squaredMaximumDistance);
+
+			// number of towers not determined
+			int numberOfTowers = player.map.towers.length;
+			for (int i = 0; i < player.map.towers.length; i++) {
+				if (player.map.towers[i][0] == 0 && player.map.towers[i][1] == 0) {
+					numberOfTowers = i;
+					break;
+				}
+			}
+
+			for (int time = 0; time < Decl.TIME_MAX; time++) {
+				towerPopulations[time] = new int[numberOfTowers][effectiveMaxRadius+1];
+			}
+
+			for (int x = 0; x < Decl.MAP_SIZE; x++) {
+				for (int y = 0; y < Decl.MAP_SIZE; y++) {
+					for (int actualTower = 0; actualTower < numberOfTowers; actualTower++) {
+						// if a map point can not be used by a tower, skip
+						// y-x switch in the map!
+						int squaredDistance = MapUtils.calculateSquaredDistance(x, y, map.towers[actualTower][1], map.towers[actualTower][0]);
+						if (squaredDistance > squaredMaximumDistance) continue;
+
+						int trueDistance = (int) Math.sqrt(squaredDistance - state.distMin * state.distMin);
+						for (int time = 0; time < Decl.TIME_MAX; time++) {
+							towerPopulations[time][actualTower][trueDistance] += populations[time][x][y];
+						}
+					}
+				}
+			}
+
+			for (short i = 0; i < numberOfTowers; i++) {
+				for (int time = 0; time < Decl.TIME_MAX; time++) {
+					calculatePrefixSum(towerPopulations[time][i]);
+				}
+			}
+		}
+
+		private static void calculateTowerDistances(TPlayer player) {
+			// number of towers not determined
+			int numberOfTowers = player.map.towers.length;
+			for (int i = 0; i < player.map.towers.length; i++) {
+				if (player.map.towers[i][0] == 0 && player.map.towers[i][1] == 0) {
+					numberOfTowers = i;
+					break;
+				}
+			}
+
+			towerDistances = new short[numberOfTowers][numberOfTowers];
+			for (short i = 0; i < towerDistances.length; i++) {
+				for (short j = 0; j < towerDistances.length; j++) {
+					towerDistances[i][j] = (short)Math.sqrt(MapUtils.calculateSquaredDistance(map.towers[i][0],map.towers[i][1],map.towers[j][0],map.towers[j][1]));
+				}
+			}
+		}
+	}
+
+
+	// Same like LongInitializationProcess, but some states are calculated iteratively
+	public static class IterativeInitializationProcess {
+		private static int lastTime;
+		public static void init(TPlayer player, int lookahead) {
+			// initialize characteristics
+			lastTime = 0;
+			state = player.headerIni;
+
+			map = player.map;
+			populations = new int[Decl.TIME_MAX][][];
+			populations[0] = cloneIntArray(map.pop);
+
+			// calculating populations in advance
+			for (int i = 1; i < Decl.TIME_MAX; i++) {
+				map.MapNextTime();
+				populations[i] = cloneIntArray(map.pop);
+			}
+
+			// calculating data need increasement
+			dataNeedInTime = new double[Decl.TIME_MAX];
+			dataNeedInTime[0] = state.dataNeed;
+			for (int i = 1; i < Decl.TIME_MAX; i++) {
+				dataNeedInTime[i] = dataNeedInTime[i-1] * state.dataMulti;
+			}
+
+			calculateTowerPopulations(player, lookahead);
+			calculateTowerDistances(player);
+
+			myTowers = new HashSet<>();
+			towersUnderOffer = new HashSet<>();
+			towerOffers = new HashMap<>();
+			numberOfTowerOffers = new int[player.inputData.header.numTowers];
+			lastTime += lookahead;
+		}
+
+		public static void doLookahead(TPlayer player, int lookahead) {
+			if (lastTime + lookahead > Decl.TIME_MAX) return; // skipping if there is no lookahead
+			calculateTowerPopulations(player, lookahead);
+			lastTime += lookahead;
+		}
+
+		// NOTE overlapping towers not taken into consideration
+		private static void calculateTowerPopulations(TPlayer player, int lookAhead) {
+			// calculating total populations
+			towerPopulations = new int[Decl.TIME_MAX][][];
+			effectiveMaxRadius = Math.min(state.distMax - state.distMin, MAX_RADIUS_RANGE); // radius counted from distmin
+
+			int squaredMaximumDistance = effectiveMaxRadius * effectiveMaxRadius + state.distMin * state.distMin; // squared maximum distance from a tower
+			int maximumDistance = (int)Math.sqrt(squaredMaximumDistance);
+
+			// number of towers not determined
+			int numberOfTowers = player.map.towers.length;
+			for (int i = 0; i < player.map.towers.length; i++) {
+				if (player.map.towers[i][0] == 0 && player.map.towers[i][1] == 0) {
+					numberOfTowers = i;
+					break;
+				}
+			}
+
+			for (int time = 0; time < Decl.TIME_MAX; time++) {
+				towerPopulations[time] = new int[numberOfTowers][effectiveMaxRadius+1];
+			}
+
+			for (int x = 0; x < Decl.MAP_SIZE; x++) {
+				for (int y = 0; y < Decl.MAP_SIZE; y++) {
+					for (int actualTower = 0; actualTower < numberOfTowers; actualTower++) {
+						// if a map point can not be used by a tower, skip
+						// y-x switch in the map!
+						int squaredDistance = MapUtils.calculateSquaredDistance(x, y, map.towers[actualTower][1], map.towers[actualTower][0]);
+						if (squaredDistance > squaredMaximumDistance) continue;
+
+						int trueDistance = (int) Math.sqrt(squaredDistance - state.distMin * state.distMin);
+						for (int time = lastTime; time < lookAhead; time++) {
+							towerPopulations[time][actualTower][trueDistance] += populations[time][x][y];
+						}
+					}
+				}
+			}
+
+			for (short i = 0; i < numberOfTowers; i++) {
+				for (int time = lastTime; time < lookAhead; time++) {
+					calculatePrefixSum(towerPopulations[time][i]);
+				}
+			}
+		}
+
+		private static void calculateTowerDistances(TPlayer player) {
+			// number of towers not determined
+			int numberOfTowers = player.map.towers.length;
+			for (int i = 0; i < player.map.towers.length; i++) {
+				if (player.map.towers[i][0] == 0 && player.map.towers[i][1] == 0) {
+					numberOfTowers = i;
+					break;
+				}
+			}
+
+			towerDistances = new short[numberOfTowers][numberOfTowers];
+			for (short i = 0; i < towerDistances.length; i++) {
+				for (short j = 0; j < towerDistances.length; j++) {
+					towerDistances[i][j] = (short)Math.sqrt(MapUtils.calculateSquaredDistance(map.towers[i][0],map.towers[i][1],map.towers[j][0],map.towers[j][1]));
+				}
+			}
+		}
+	}
+
 
   public static void makeMove(TPlayer player) {
     // note using Tplayer as persistent state
     System.out.println("money: " + player.inputData.header.money);
     if (player.myTime == 0) {
       long t = System.currentTimeMillis();
-      init(player);
+      LongInitializationProcess.init(player);
       System.out.println("Initialization took " + (System.currentTimeMillis() - t) + " ms.");
       player.myTime++;
     } else {
@@ -93,69 +266,6 @@ public class Player {
       System.out.println("time: " + player.inputData.header.time + " total pop:" + player.map.totalPop);
 
       stepInGame(player);
-    }
-  }
-
-  // NOTE overlapping towers not taken into consideration
-  private static void calculateTowerPopulations(TPlayer player) {
-    // calculating total populations
-    towerPopulations = new int[Decl.TIME_MAX][][];
-    effectiveMaxRadius = Math.min(state.distMax - state.distMin, MAX_RADIUS_RANGE); // radius counted from distmin
-
-    int squaredMaximumDistance = effectiveMaxRadius * effectiveMaxRadius + state.distMin * state.distMin; // squared maximum distance from a tower
-    int maximumDistance = (int)Math.sqrt(squaredMaximumDistance);
-
-    // number of towers not determined
-    int numberOfTowers = player.map.towers.length;
-    for (int i = 0; i < player.map.towers.length; i++) {
-      if (player.map.towers[i][0] == 0 && player.map.towers[i][1] == 0) {
-        numberOfTowers = i;
-        break;
-      }
-    }
-
-    for (int time = 0; time < Decl.TIME_MAX; time++) {
-      towerPopulations[time] = new int[numberOfTowers][effectiveMaxRadius+1];
-    }
-
-    for (int x = 0; x < Decl.MAP_SIZE; x++) {
-      for (int y = 0; y < Decl.MAP_SIZE; y++) {
-        for (int actualTower = 0; actualTower < numberOfTowers; actualTower++) {
-          // if a map point can not be used by a tower, skip
-          // y-x switch in the map!
-          int squaredDistance = MapUtils.calculateSquaredDistance(x, y, map.towers[actualTower][1], map.towers[actualTower][0]);
-          if (squaredDistance > squaredMaximumDistance) continue;
-
-          int trueDistance = (int) Math.sqrt(squaredDistance - state.distMin * state.distMin);
-          for (int time = 0; time < Decl.TIME_MAX; time++) {
-            towerPopulations[time][actualTower][trueDistance] += populations[time][x][y];
-          }
-        }
-      }
-    }
-
-    for (short i = 0; i < numberOfTowers; i++) {
-      for (int time = 0; time < Decl.TIME_MAX; time++) {
-        calculatePrefixSum(towerPopulations[time][i]);
-      }
-    }
-  }
-
-  private static void calculateTowerDistances(TPlayer player) {
-    // number of towers not determined
-    int numberOfTowers = player.map.towers.length;
-    for (int i = 0; i < player.map.towers.length; i++) {
-      if (player.map.towers[i][0] == 0 && player.map.towers[i][1] == 0) {
-        numberOfTowers = i;
-        break;
-      }
-    }
-
-    towerDistances = new short[numberOfTowers][numberOfTowers];
-    for (short i = 0; i < towerDistances.length; i++) {
-      for (short j = 0; j < towerDistances.length; j++) {
-        towerDistances[i][j] = (short)Math.sqrt(MapUtils.calculateSquaredDistance(map.towers[i][0],map.towers[i][1],map.towers[j][0],map.towers[j][1]));
-      }
     }
   }
 
