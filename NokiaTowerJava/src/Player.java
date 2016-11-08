@@ -600,9 +600,9 @@ public class Player {
     for (TowerInfo t : towers) {
       //System.out.println("TowerID: " + i + "profit: " + profitNextSteps);
       // buy as long as we can
-      if (state.money - MIN_MONEY >  t.cost) {
+      if (state.money - MIN_MONEY >  t.actionCost) {
         player.rentTower(t.id, (float)state.rentingMin, t.distance, (float)player.inputData.header.offerMax);
-        state.money -= t.cost; // cost of caution
+        state.money -= t.actionCost; // cost of caution
       }
     }
 
