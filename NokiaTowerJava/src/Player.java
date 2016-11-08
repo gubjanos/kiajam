@@ -564,6 +564,7 @@ public class Player {
 			TtowerInfRec actualTowerInf = player.inputData.towerInf[i];
 			if (actualTowerInf.owner == player.ID) continue; // skip our towers
 			if (actualTowerInf.owner == 0) continue; // skip acquire towers
+			if (actualTowerInf.licitID == player.ID) // we already did it! ;)
 			if (strategyR.nextFloat() > ATTACK_PROB) continue; // thats it
 
 			int ourOverlicit = 10 + strategyR.nextInt(10);
