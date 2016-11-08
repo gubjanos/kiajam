@@ -16,7 +16,8 @@ public class Player {
   private static java.util.Map<Integer, TtowerOrderRec> towerOffers; // the offers given for towers
 
   // otletek: tornyonkent kiszamolni range-ekre az osszlakossagot koronkent: 200 * 365 * RANGE => 0.07MB * range
-  private static final int MAX_RADIUS_RANGE = 50;
+  private static final int MAX_RADIUS_RANGE = 30;
+  private static final int RADIUS_APPROXIMATION = 5; // the stepsize between radiuses
 
   private static int[][] cloneIntArray (int[][] input){
     int[][] result = new int[input.length][];
@@ -122,7 +123,7 @@ public class Player {
 		// NOTE overlapping towers not taken into consideration
 		protected static void calculateTowerPopulations(TPlayer player, int lookAhead) {
 			// calculating total populations
-			towerPopulations = new int[Decl.TIME_MAX][][];
+			if (towerPopulations == null) towerPopulations = new int[Decl.TIME_MAX][][];
 			effectiveMaxRadius = Math.min(state.distMax - state.distMin, MAX_RADIUS_RANGE); // radius counted from distmin
 
 			int squaredMaximumDistance = effectiveMaxRadius * effectiveMaxRadius + state.distMin * state.distMin; // squared maximum distance from a tower
@@ -137,7 +138,7 @@ public class Player {
 				}
 			}
 
-			for (int time = 0; time < Decl.TIME_MAX; time++) {
+			for (int time = lastTime; time < lastTime + lookAhead; time++) {
 				towerPopulations[time] = new int[numberOfTowers][effectiveMaxRadius+1];
 			}
 
@@ -196,7 +197,9 @@ public class Player {
     } else {
       System.out.println(player.myTime);
       System.out.println("time: " + player.inputData.header.time + " total pop:" + player.map.totalPop);
-			IterativeInitializationProcess.doLookahead(player, 1);
+        long t = System.currentTimeMillis();
+        IterativeInitializationProcess.doLookahead(player, 1);
+        System.out.println("Lookahead done in:" + (System.currentTimeMillis() - t));
       stepInGame(player);
     }
   }
@@ -417,7 +420,7 @@ public class Player {
       double maximumProfit = 0.0d;
       TowerInfo maximumInfo = null;
 
-      for (short distance = (short)state.distMin; distance < effectiveMaxRadius; distance++) {
+      for (short distance = (short)state.distMin; distance < effectiveMaxRadius; distance+= RADIUS_APPROXIMATION) {
         // checking for playing out overlaps
         for (Float offer : EnemyAwareTowerUtils.getNearbyOffers(i, distance, player)) {
           double profitNextSteps = getProfitNextSteps(player, i, (float) state.rentingMin,
