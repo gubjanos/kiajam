@@ -14,9 +14,10 @@ public class Player {
 
   private static Set<Short> myTowers; // the set of towers owned
   private static java.util.Map<Integer, TtowerOrderRec> towerOffers; // the offers given for towers
+  private static Set<Short> bannedTowers; // set of towers banned from next acquire step
 
   // otletek: tornyonkent kiszamolni range-ekre az osszlakossagot koronkent: 200 * 365 * RANGE => 0.07MB * range
-  private static final int MAX_RADIUS_RANGE = 50;
+  private static final int MAX_RADIUS_RANGE = 40;
   private static final int RADIUS_APPROXIMATION = 5; // the stepsize between radiuses
 
   private static int[][] cloneIntArray (int[][] input){
@@ -85,7 +86,8 @@ public class Player {
 		protected static int lastTime;
 		public static void init(TPlayer player, int lookahead) {
 			// initialize characteristics
-			lastTime = 0;
+
+            lastTime = 0;
 			state = player.headerIni;
 
 			map = player.map;
@@ -93,28 +95,34 @@ public class Player {
 			populations[0] = cloneIntArray(map.pop);
 
 			// calculating populations in advance
-			for (int i = 1; i < Decl.TIME_MAX; i++) {
+            System.out.println(System.currentTimeMillis());
+            for (int i = lastTime+1; i < Math.min(Decl.TIME_MAX, lastTime+lookahead); i++) {
 				map.MapNextTime();
 				populations[i] = cloneIntArray(map.pop);
 			}
-
+            System.out.println(System.currentTimeMillis());
 			// calculating data need increasement
 			dataNeedInTime = new double[Decl.TIME_MAX];
 			dataNeedInTime[0] = state.dataNeed;
 			for (int i = 1; i < Decl.TIME_MAX; i++) {
 				dataNeedInTime[i] = dataNeedInTime[i-1] * state.dataMulti;
 			}
-
+            System.out.println(System.currentTimeMillis());
 			calculateTowerPopulations(player, lookahead);
-			calculateTowerDistances(player);
-
+            System.out.println(System.currentTimeMillis());
+            calculateTowerDistances(player);
+            System.out.println(System.currentTimeMillis());
 			myTowers = new HashSet<>();
 			towerOffers = new HashMap<>();
 			lastTime += lookahead;
 		}
 
 		public static void doLookahead(TPlayer player, int lookahead) {
-			if (lastTime + lookahead > Decl.TIME_MAX) return; // skipping if there is no lookahead
+            for (int i = lastTime+1; i < Math.min(Decl.TIME_MAX, lastTime+lookahead+1); i++) {
+                map.MapNextTime();
+                populations[i] = cloneIntArray(map.pop);
+            }
+            if (lastTime + lookahead > Decl.TIME_MAX) return; // skipping if there is no lookahead
 			lookahead = Math.min(Decl.TIME_MAX - lastTime, lookahead); // checking for upper boundary
 			calculateTowerPopulations(player, lookahead);
 			lastTime += lookahead;
@@ -187,10 +195,14 @@ public class Player {
 	// this class speeds up calculations by skipping data points - thus approximating populations
 	public static class ApproximativeLookahead extends IterativeInitializationProcess {
 		private static Random r = new Random(42);
-		private static float SKIP_VAL = 0.5f;
+		private static float SKIP_VAL = 0.2f;
 
 		public static void doLookahead(TPlayer player, int lookahead) {
-			if (lastTime + lookahead > Decl.TIME_MAX) return; // skipping if there is no lookahead
+            for (int i = lastTime; i < Math.min(Decl.TIME_MAX, lastTime+lookahead); i++) {
+                map.MapNextTime();
+                populations[i] = cloneIntArray(map.pop);
+            }
+            if (lastTime + lookahead > Decl.TIME_MAX) return; // skipping if there is no lookahead
 			lookahead = Math.min(Decl.TIME_MAX - lastTime, lookahead); // checking for upper boundary
 			calculateTowerPopulations(player, lookahead, SKIP_VAL);
 			lastTime += lookahead;
@@ -244,14 +256,15 @@ public class Player {
 	}
 
 
-	private static final int LOOKAHEAD = 5; // TODO this is a parameter of the script
+	private static final int LOOKAHEAD = 3; // TODO this is a parameter of the script
 
   public static void makeMove(TPlayer player) {
     // note using Tplayer as persistent state
     System.out.println("money: " + player.inputData.header.money);
     if (player.myTime == 0) {
       long t = System.currentTimeMillis();
-        IterativeInitializationProcess.init(player, LOOKAHEAD);
+        IterativeInitializationProcess.init(player, 10);
+        ApproximativeLookahead.doLookahead(player, 1);
       System.out.println("Initialization took " + (System.currentTimeMillis() - t) + " ms.");
       player.myTime++;
     } else {
@@ -438,7 +451,7 @@ public class Player {
     player.myTime++;
   }
 
-  private static final int MIN_MONEY = 900;
+  private static final int MIN_MONEY = 700;
 
   public static class TowerInfo {
 		public static enum Type {
@@ -470,8 +483,7 @@ public class Player {
 
       @Override
       public int compare(TowerInfo o1, TowerInfo o2) {
-
-          return (int)(o2.profit-o2.cost - (o1.profit-o1.cost))x;
+          return (int)(o2.profit-o2.cost - (o1.profit-o1.cost));
       }
 
       @Override
@@ -504,6 +516,7 @@ public class Player {
 
     Set<Short> secureTowers = new HashSet<>();
     Set<Short> notWorthItTowers = new HashSet<>();
+      bannedTowers = new HashSet<>();
 
     // check if the owned towers still worth it
     for (Short towerID : myTowers) {
@@ -602,10 +615,16 @@ public class Player {
     for (TowerInfo t : towers) {
       //System.out.println("TowerID: " + i + "profit: " + profitNextSteps);
       // buy as long as we can
+        // banned logic
+        if (t.type == TowerInfo.Type.ACQUIRE && bannedTowers.contains(t.id)) continue;
       if (state.money - MIN_MONEY >  t.actionCost) {
         player.rentTower(t.id, (float)state.rentingMin, t.distance, (float)player.inputData.header.offerMax);
         state.money -= t.actionCost; // cost of caution
+          if (t.type == TowerInfo.Type.ACQUIRE) {
+              addBannedTowers(bannedTowers, t, player);
+          }
       }
+      if (player.outputData.numOrders > 5) break; // sanity stuff
     }
 
     // leave not worth it towers
@@ -633,6 +652,13 @@ public class Player {
       myTowers.remove(towerID);
       player.leaveTower(towerID);
     }
+  }
+
+  private static void addBannedTowers(Set<Short> bannedTowers, TowerInfo t, TPlayer player) {
+      for (short i = 0; i < player.inputData.header.numTowers; i++) {
+          if (bannedTowers.contains(i)) continue; // no need to explain
+          if (towerDistances[t.id][i] < (2 * t.distance)) bannedTowers.add(i); // bann
+      }
   }
 
   private static double[] getProfitNextSteps(TPlayer player, Short towerID, float rentingCost,
