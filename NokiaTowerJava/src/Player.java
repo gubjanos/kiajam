@@ -625,7 +625,7 @@ public class Player {
               addBannedTowers(bannedTowers, t, player);
           }
       }
-      if (player.outputData.numOrders > 5) break; // sanity stuff
+      //if (player.outputData.numOrders > 5) break; // sanity stuff
     }
 
     // leave not worth it towers
