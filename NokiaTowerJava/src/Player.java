@@ -494,7 +494,7 @@ public class Player {
     }
   }
 
-	private static Random strategyR = new Random(43);
+	private static Random strategyR = new Random(44);
 	private static float INVEST_PROB = 0.5f;
 	private static float MINIMUM_PROFIT = 10f;
 
@@ -617,6 +617,7 @@ public class Player {
       // buy as long as we can
         // banned logic
         if (t.type == TowerInfo.Type.ACQUIRE && bannedTowers.contains(t.id)) continue;
+        if (strategyR.nextFloat() > 0.5f) continue; // be full retard!
       if (state.money - MIN_MONEY >  t.actionCost) {
         player.rentTower(t.id, (float)state.rentingMin, t.distance, (float)player.inputData.header.offerMax);
         state.money -= t.actionCost; // cost of caution
