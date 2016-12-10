@@ -1,4 +1,5 @@
-public class MapUtils {
+package xxx;
+public class MapUtils2 {
   /*
   public static int[][] popNextTime(int[][] popActualTime, Map map) {
     // NOTE code cloned from Map.MapNextTime

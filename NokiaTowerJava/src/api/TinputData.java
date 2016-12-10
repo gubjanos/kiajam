@@ -1,3 +1,4 @@
+package api;
 public class TinputData {
 	public Theader header = new Theader();
 		public TtowerInfRec[] towerInf = new TtowerInfRec[Decl.TOWER_MAX];

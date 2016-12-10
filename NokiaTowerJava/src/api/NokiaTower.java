@@ -1,4 +1,7 @@
+package api;
 import java.io.FileNotFoundException;
+
+import logic.Player;
 
 public class NokiaTower {
 
@@ -14,6 +17,7 @@ public class NokiaTower {
 
             Comm.initComm();
 
+//            TPlayer player = new TPlayer();
             TPlayer player = new TPlayer();
 
             player.ID = 1 + (args[0].charAt(2) - '0');

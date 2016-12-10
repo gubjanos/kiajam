@@ -1,3 +1,4 @@
+package api;
 public class TtowerOrderRec {
 	public short towerID;      // towerID
 	public float rentingCost;  // licit, owner must be 0
