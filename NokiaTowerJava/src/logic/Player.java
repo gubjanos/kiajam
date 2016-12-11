@@ -1,19 +1,32 @@
+package logic;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
+
+// TODO: remove api. prefix before class names
+import api.Decl;
+import api.Map;
+import api.TPlayer;
+import api.TheaderIni;
+import api.TtowerInfRec;
+import api.TtowerOrderRec;
 
 public class Player {
   private static Map map;
   private static TheaderIni state; // TODO: this is an initialized state, check when it has to be updated
   private static int[][][] populations; // time, x, y
   private static int[][][] towerPopulations; // time, tower, radius initialized by method calculateTowerPopulations
-  private static short[][] towerDistances; // towerA, towerB, the distance between the two tower
+  private static Short[][] towerDistances; // towerA, towerB, the distance between the two tower
 
   private static double[] dataNeedInTime; // time, the data need factor in time
   private static int dataTechnology = 1;
 
   private static int effectiveMaxRadius;
 
-  private static Set<Short> myTowers; // the set of towers owned
-  private static java.util.Map<Integer, TtowerOrderRec> towerOffers; // the offers given for towers
+  private static Set<Short> myTowers = new HashSet<>(); // the set of towers owned
+//  private static java.util.Map<Integer, TtowerOrderRec> towerOffers = new HashMap<>(); // the offers given for towers
   private static Set<Short> bannedTowers; // set of towers banned from next acquire step
 
   // otletek: tornyonkent kiszamolni range-ekre az osszlakossagot koronkent: 200 * 365 * RANGE => 0.07MB * range
@@ -30,91 +43,80 @@ public class Player {
 
   public Tower[] towerInfos;
 
-  public static class Tower {
-    public short id;
-    public short[] closestTowers;
-    public double[] overlaps;
+  /** 
+   * This class is responsible for long initialization version of the player
+   */
+  public static class LongInitializationProcess extends IterativeInitializationProcess{
+  	public static void init(TPlayer player) {
+  		// initialize characteristics
+  		state = player.headerIni;
+
+  		map = player.map;
+  		populations = new int[Decl.TIME_MAX][][];
+  		populations[0] = cloneIntArray(map.pop);
+
+  		// calculating populations in advance
+  		for (int i = 1; i < Decl.TIME_MAX; i++) {
+  			map.MapNextTime();
+  			populations[i] = cloneIntArray(map.pop);
+  		}
+
+  		// calculating data need increasement
+  		dataNeedInTime = new double[Decl.TIME_MAX];
+  		dataNeedInTime[0] = state.dataNeed;
+  		for (int i = 1; i < Decl.TIME_MAX; i++) {
+  			dataNeedInTime[i] = dataNeedInTime[i-1] * state.dataMulti;
+  		}
+
+  		calculateTowerPopulations(player, Decl.TIME_MAX);
+  		calculateTowerDistances(player);
+  	}
   }
-
-  public static class MapUtils {
-    // Returns if a point (x1, y1) inside a (x2, y2) centered d radius circle
-    public static boolean isInsideCircle(int x1, int y1, int x2, int y2, int radius) {
-      return calculateSquaredDistance(x1, y1, x2, y2) <= (radius * radius);
-    }
-
-    // Returns the squared distance of two points (x1,y1) and (x2,y2)
-    public static int calculateSquaredDistance(int x1, int y1, int x2, int y2) {
-      return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
-    }
-  }
-
-	// This class is responsible for long initialization version of the player
-	public static class LongInitializationProcess extends IterativeInitializationProcess{
-		public static void init(TPlayer player) {
-			// initialize characteristics
-			state = player.headerIni;
-
-			map = player.map;
-			populations = new int[Decl.TIME_MAX][][];
-			populations[0] = cloneIntArray(map.pop);
-
-			// calculating populations in advance
-			for (int i = 1; i < Decl.TIME_MAX; i++) {
-				map.MapNextTime();
-				populations[i] = cloneIntArray(map.pop);
-			}
-
-			// calculating data need increasement
-			dataNeedInTime = new double[Decl.TIME_MAX];
-			dataNeedInTime[0] = state.dataNeed;
-			for (int i = 1; i < Decl.TIME_MAX; i++) {
-				dataNeedInTime[i] = dataNeedInTime[i-1] * state.dataMulti;
-			}
-
-			calculateTowerPopulations(player, Decl.TIME_MAX);
-			calculateTowerDistances(player);
-
-			myTowers = new HashSet<>();
-			towerOffers = new HashMap<>();
-		}
-	}
 
 
 	// Same like LongInitializationProcess, but some states are calculated iteratively
 	// NOTE! dont forget to call doLookup method
 	public static class IterativeInitializationProcess {
 		protected static int lastTime;
+		
+		/**
+		 * initializes:
+		 * 	-state
+		 * 	-populations
+		 *  -dataNeedInTime
+		 */
 		public static void init(TPlayer player, int lookahead) {
-			// initialize characteristics
-
             lastTime = 0;
 			state = player.headerIni;
-
 			map = player.map;
 			populations = new int[Decl.TIME_MAX][][];
 			populations[0] = cloneIntArray(map.pop);
+			
+			calculatePopulationsInAdvance(lookahead);
+			calculateDataNeedIncreasement();
+			calculateTowerPopulations(player, lookahead);
+            calculateTowerDistances(player);
+            
+			lastTime += lookahead;
+		}
 
-			// calculating populations in advance
-            System.out.println(System.currentTimeMillis());
-            for (int i = lastTime+1; i < Math.min(Decl.TIME_MAX, lastTime+lookahead); i++) {
-				map.MapNextTime();
-				populations[i] = cloneIntArray(map.pop);
-			}
-            System.out.println(System.currentTimeMillis());
-			// calculating data need increasement
+		private static void calculateDataNeedIncreasement() {
+			long t = System.currentTimeMillis();
 			dataNeedInTime = new double[Decl.TIME_MAX];
 			dataNeedInTime[0] = state.dataNeed;
 			for (int i = 1; i < Decl.TIME_MAX; i++) {
 				dataNeedInTime[i] = dataNeedInTime[i-1] * state.dataMulti;
 			}
-            System.out.println(System.currentTimeMillis());
-			calculateTowerPopulations(player, lookahead);
-            System.out.println(System.currentTimeMillis());
-            calculateTowerDistances(player);
-            System.out.println(System.currentTimeMillis());
-			myTowers = new HashSet<>();
-			towerOffers = new HashMap<>();
-			lastTime += lookahead;
+			System.out.println("calculating data need increasement: [" + (System.currentTimeMillis()-t) + "] ms");
+		}
+		
+		static void calculatePopulationsInAdvance(int lookahead){
+            long t = System.currentTimeMillis();
+            for (int i = lastTime+1; i < Math.min(Decl.TIME_MAX, lastTime+lookahead); i++) {
+				map.MapNextTime();
+				populations[i] = cloneIntArray(map.pop);
+			}
+            System.out.println("calculating populations in advance: [" + (System.currentTimeMillis()-t) + "] ms");
 		}
 
 		public static void doLookahead(TPlayer player, int lookahead) {
@@ -130,21 +132,16 @@ public class Player {
 
 		// NOTE overlapping towers not taken into consideration
 		protected static void calculateTowerPopulations(TPlayer player, int lookAhead) {
+			long t = System.currentTimeMillis();
 			// calculating total populations
 			if (towerPopulations == null) towerPopulations = new int[Decl.TIME_MAX][][];
 			effectiveMaxRadius = Math.min(state.distMax - state.distMin, MAX_RADIUS_RANGE); // radius counted from distmin
 
 			int squaredMaximumDistance = effectiveMaxRadius * effectiveMaxRadius + state.distMin * state.distMin; // squared maximum distance from a tower
-			int maximumDistance = (int)Math.sqrt(squaredMaximumDistance);
+//			int maximumDistance = (int)Math.sqrt(squaredMaximumDistance);
 
 			// number of towers not determined
-			int numberOfTowers = player.map.towers.length;
-			for (int i = 0; i < player.map.towers.length; i++) {
-				if (player.map.towers[i][0] == 0 && player.map.towers[i][1] == 0) {
-					numberOfTowers = i;
-					break;
-				}
-			}
+			int numberOfTowers = numberOfTowers(player);
 
 			for (int time = lastTime; time < lastTime + lookAhead; time++) {
 				towerPopulations[time] = new int[numberOfTowers][effectiveMaxRadius+1];
@@ -171,24 +168,31 @@ public class Player {
 					calculatePrefixSum(towerPopulations[time][i]);
 				}
 			}
+			System.out.println("calculateTowerPopulations: [" + (System.currentTimeMillis()-t) + "] ms");
+		}
+		
+		static int numberOfTowers(final TPlayer player) {
+			return (int)Arrays.stream(player.map.towers).filter(x -> x[0] + x[1] != 0).count();
 		}
 
+		/**
+		 * initializes {@code towerDistances}
+		 */
 		protected static void calculateTowerDistances(TPlayer player) {
-			// number of towers not determined
-			int numberOfTowers = player.map.towers.length;
-			for (int i = 0; i < player.map.towers.length; i++) {
-				if (player.map.towers[i][0] == 0 && player.map.towers[i][1] == 0) {
-					numberOfTowers = i;
-					break;
-				}
-			}
+			long t = System.currentTimeMillis();
+			int numberOfTowers = numberOfTowers(player);
 
-			towerDistances = new short[numberOfTowers][numberOfTowers];
+			towerDistances = new Short[numberOfTowers][numberOfTowers];
 			for (short i = 0; i < towerDistances.length; i++) {
 				for (short j = 0; j < towerDistances.length; j++) {
-					towerDistances[i][j] = (short)Math.sqrt(MapUtils.calculateSquaredDistance(map.towers[i][0],map.towers[i][1],map.towers[j][0],map.towers[j][1]));
+					if (i == j)
+						towerDistances[i][j] = 0;
+					else
+						towerDistances[i][j] = (short) MapUtils.calculateDistance(map.towers[i][0], map.towers[i][1],
+								map.towers[j][0], map.towers[j][1]);
 				}
 			}
+			System.out.println("calculateTowerDistances: [" + (System.currentTimeMillis() - t) + "] ms");
 		}
 	}
 
@@ -198,32 +202,32 @@ public class Player {
 		private static float SKIP_VAL = 0.2f;
 
 		public static void doLookahead(TPlayer player, int lookahead) {
-            for (int i = lastTime; i < Math.min(Decl.TIME_MAX, lastTime+lookahead); i++) {
-                map.MapNextTime();
-                populations[i] = cloneIntArray(map.pop);
-            }
+            predictFuturePopulations(lookahead);
             if (lastTime + lookahead > Decl.TIME_MAX) return; // skipping if there is no lookahead
 			lookahead = Math.min(Decl.TIME_MAX - lastTime, lookahead); // checking for upper boundary
 			calculateTowerPopulations(player, lookahead, SKIP_VAL);
 			lastTime += lookahead;
 		}
 
+		private static void predictFuturePopulations(int lookahead) {
+			for (int i = lastTime; i < Math.min(Decl.TIME_MAX, lastTime+lookahead); i++) {
+                map.MapNextTime();
+                populations[i] = cloneIntArray(map.pop);
+            }
+		}
+
+		/**
+		 * initializes: {@code towerPopulations, effectiveMaxRadius}
+		 */
 		protected static void calculateTowerPopulations(TPlayer player, int lookAhead, float skipVal) {
 			// calculating total populations
 			if (towerPopulations == null) towerPopulations = new int[Decl.TIME_MAX][][];
 			effectiveMaxRadius = Math.min(state.distMax - state.distMin, MAX_RADIUS_RANGE); // radius counted from distmin
 
-			int squaredMaximumDistance = effectiveMaxRadius * effectiveMaxRadius + state.distMin * state.distMin; // squared maximum distance from a tower
-			int maximumDistance = (int)Math.sqrt(squaredMaximumDistance);
+			int squaredMaximumDistance = MapUtils.calculateSquaredDistance(effectiveMaxRadius, state.distMin); // squared maximum distance from a tower
 
 			// number of towers not determined
-			int numberOfTowers = player.map.towers.length;
-			for (int i = 0; i < player.map.towers.length; i++) {
-				if (player.map.towers[i][0] == 0 && player.map.towers[i][1] == 0) {
-					numberOfTowers = i;
-					break;
-				}
-			}
+			int numberOfTowers = numberOfTowers(player);
 
 			for (int time = lastTime; time < lastTime + lookAhead; time++) {
 				towerPopulations[time] = new int[numberOfTowers][effectiveMaxRadius+1];
@@ -256,26 +260,26 @@ public class Player {
 	}
 
 
-	private static final int LOOKAHEAD = 3; // TODO this is a parameter of the script
+//	private static final int LOOKAHEAD = 3; // TODO this is a parameter of the script
 
-  public static void makeMove(TPlayer player) {
-    // note using Tplayer as persistent state
-    System.out.println("money: " + player.inputData.header.money);
-    if (player.myTime == 0) {
-      long t = System.currentTimeMillis();
-        IterativeInitializationProcess.init(player, 10);
-        ApproximativeLookahead.doLookahead(player, 1);
-      System.out.println("Initialization took " + (System.currentTimeMillis() - t) + " ms.");
-      player.myTime++;
-    } else {
-      System.out.println(player.myTime);
-      System.out.println("time: " + player.inputData.header.time + " total pop:" + player.map.totalPop);
-        long t = System.currentTimeMillis();
-        ApproximativeLookahead.doLookahead(player, 1);
-        System.out.println("Lookahead done in:" + (System.currentTimeMillis() - t));
-      stepInGame(player);
-    }
-  }
+	public static void makeMove(TPlayer player) {
+		System.out.println("money: " + player.inputData.header.money);
+		long t = System.currentTimeMillis();
+		if (player.myTime == 0) {
+			IterativeInitializationProcess.init(player, 10);
+			ApproximativeLookahead.doLookahead(player, 1);
+			System.out.println("Initialization took " + (System.currentTimeMillis() - t) + " ms");
+		} else {
+			System.out.println(player.myTime);
+			System.out.println("time: " + player.inputData.header.time + ", total pop:" + player.map.totalPop);
+			ApproximativeLookahead.doLookahead(player, 1);
+			System.out.println("Lookahead took " + (System.currentTimeMillis() - t) + " ms");
+			stepInGame(player);
+		}
+
+		// step time
+		player.myTime++;
+	}
 
 
   private static void calculatePrefixSum(int[] array) {
@@ -289,29 +293,6 @@ public class Player {
 			array[i] *= multiplier;
 		}
 	}
-
-  // This method is an approximation only. it returns the overlap between circles c1 and c2, wrt area of c1
-	// TODO: eliminate approximation
-  public static double getOverlapFraction(int x1, int y1, int x2, int y2, short r1, short r2) {
-    double distance = Math.sqrt(MapUtils.calculateSquaredDistance(x1, y1, x2, y2));
-    if (distance > r1 + r2) return 0.0d;
-    double biggerRadius = Math.max(r1,r2);
-    // calculation of overlap here
-    double s = (r1 + r2 + distance) / 2;
-    double param1 = ((r2 * r2) - (r1 * r1) - (distance * distance)) / (-2.0 * r1 * distance);
-    double alpha = 2 * Math.acos(param1);
-		if (Double.isNaN(alpha)) {
-			if (r1 > r2) return ((r2 * r2)/(r1*r1));
-			else return 1.0f;
-		}
-    double param2 = ((r1 * r1) - (r2 * r2) - (distance * distance)) / (-2.0 * r2 * distance);
-    double beta = 2 * Math.acos(param2);
-    double t1 = (r1 * r1) * alpha / 2;
-    double t2 = (r2 * r2) * beta / 2;
-    double t3 = Math.sqrt(s * (s - r1) * (s - r2) * (s-distance));
-    double tCommon = t1 + t2 - 2 * t3;
-		return tCommon / (t1 / alpha * 2 * 3.14f);
-  }
 
   // NOTE: these methods are now not enemy-aware
   public static class TowerUtils {
@@ -356,6 +337,9 @@ public class Player {
       return profitOfTower(towerID, rentingCost, offer, distance, time, player);
     }
 
+    /**
+     * returns: revenue - cost
+     */
     public static double profitOfTower(short towerID, float rentingCost, float offer, short distance, int time, TPlayer player) {
       if (distance < state.distMin) return -rentingCost;
       double cost = costOfTower(towerID, rentingCost, distance, player);
@@ -370,140 +354,91 @@ public class Player {
     public static List<Float> getNearbyOffers(short towerID, short distance, TPlayer player) {
       ArrayList<Float> offers = new ArrayList<>();
       for (int i = 0; i < player.inputData.header.numTowers; i++) {
-        double overlap = getOverlapFraction(map.towers[towerID][1], map.towers[towerID][0], map.towers[i][1], map.towers[i][0], distance, distance);
+        double overlap = MapUtils.getOverlapFraction(map.towers[towerID][1], map.towers[towerID][0], map.towers[i][1], map.towers[i][0], distance, distance);
         if (overlap > 0.05d) offers.add(player.inputData.towerInf[i].offer);
       }
       return offers;
     }
 
-    public static double[] profitOfTower(short towerID, float rentingCost, float offer, short distance, int time, TPlayer player) {
-      if (distance < state.distMin) return new double[] {0, -rentingCost}; // TODO the cost is not exact!
+    public static Double[] profitOfTower(short towerID, float rentingCost, float offer, short distance, int time, TPlayer player) {
+      if (distance < state.distMin) return new Double[] {(double) 0, (double) -rentingCost}; // TODO the cost is not exact!
       double cost = TowerUtils.costOfTower(towerID, rentingCost, distance, player);
       double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(state.dataMulti, dataTechnology - 1), (distance), time, offer, player);
       //System.out.println("For tower: " + towerID + "cost: " + cost + "revenue: " + revenue);
-      return new double[] {revenue, cost};
+      return new Double[] {revenue, cost};
     }
 
     // revenue with a given offer level
     // this method tries to take enemy towers into consideration, also could not infer the ownership and offer changes in future
 		// TODO: we are not aware of our own bids yet
-    public static double revenueOfTower(short towerID, double dataTech, short distance, int time, double offer, TPlayer player) {
-      double overlapLoss = 0.0d;
-      for (short i = 0; i < player.inputData.header.numTowers; i++) {
-        if (i == towerID) continue;
-        TtowerInfRec actualInfo = player.inputData.towerInf[i];
-        if (actualInfo.offer > offer) continue; // they will take ours
-        double overlap;
+		public static double revenueOfTower(short towerID, double dataTech, short distance, int time, double offer,
+				TPlayer player) {
+			double overlapLoss = 0.0d;
+			for (short i = 0; i < player.inputData.header.numTowers; i++) {
+				if (i == towerID)
+					continue;
+				TtowerInfRec actualInfo = player.inputData.towerInf[i];
+				if (actualInfo.offer > offer)
+					continue; // they will take ours
+				double overlap;
 				if (actualInfo.owner == 0) {
-                    overlap = 0.0;
-					 //overlap = getOverlapFraction(map.towers[towerID][1], map.towers[towerID][0], map.towers[i][1], map.towers[i][0], distance, distance);
+					overlap = 0.0;
+					// overlap = getOverlapFraction(map.towers[towerID][1], map.towers[towerID][0], map.towers[i][1], map.towers[i][0], distance, distance);
 				} else {
 					// checking orders here
-					overlap = getOverlapFraction(map.towers[towerID][1], map.towers[towerID][0], map.towers[i][1],
+					overlap =  MapUtils.getOverlapFraction(map.towers[towerID][1], map.towers[towerID][0], map.towers[i][1],
 							map.towers[i][0], distance, actualInfo.distance);
 				}
 				// overlap, complex calculations happens here
-        overlapLoss += overlap;
-      }
-      return towerPopulations[time][towerID][distance - state.distMin] * offer * (1.0d - overlapLoss) / 1_000_000;
-    }
+				overlapLoss += overlap;
+			}
+			return towerPopulations[time][towerID][distance - state.distMin] * offer * (1.0d - overlapLoss) / 1_000_000;
+		}
 
     public static double actualProfitOfTower(short towerID, TPlayer player) {
-      double stats[] = EnemyAwareTowerUtils.profitOfTower(towerID, (float)state.dataTech, player.inputData.towerInf[towerID].offer, player.inputData.towerInf[towerID].distance, player.myTime, player);
+      Double[] stats = EnemyAwareTowerUtils.profitOfTower(towerID, (float)state.dataTech, player.inputData.towerInf[towerID].offer, player.inputData.towerInf[towerID].distance, player.myTime, player);
     	return stats[1] - stats[0];
 		}
   }
 
-  // validating orders and checking gathered towers
-  public static void validateTowers(TPlayer player) {
-    TtowerOrderRec[] orders = player.outputData.orders;
 
-    // first, validating if we gathered towers
-    for (int i = 0; i < orders.length; i++) {
-      if (!orders[i].leave) {
-        short towerID = orders[i].towerID;
-        if (player.inputData.towerInf[towerID].owner == player.ID) {
-          // we get this tower!
-          myTowers.add(towerID);
-        }
-      }
-    }
+	/**
+	 * validating orders and checking gathered towers
+	 */
+	public static void validateTowers(TPlayer player) {
+		// first, validating if we gathered towers
+		Set<Short> ids = Arrays.stream(player.outputData.orders).filter(o -> !o.leave)
+				.filter(o -> player.inputData.towerInf[o.towerID].owner == player.ID).map(o -> o.towerID)
+				.collect(Collectors.toSet());
+		myTowers.addAll(ids);
 
-    // check if all of our towers are really ours
-    ArrayList<Short> towersToRemove = new ArrayList<>();
-    for (Short towerID : myTowers) {
-      if (player.inputData.towerInf[towerID].owner != player.ID) towersToRemove.add(towerID);
-    }
-    for (Short towerID : towersToRemove) myTowers.remove(towerID);
-  }
+		// check if all of our towers are really ours
+		myTowers = myTowers.stream().filter(towerID -> player.inputData.towerInf[towerID].owner == player.ID)
+				.collect(Collectors.toSet());
+	}
 
-  private static void stepInGame(TPlayer player) {
-    // set up game state
-    validateTowers(player);
-    clearLastOrder(player);
+	private static void stepInGame(TPlayer player) {
+		// set up game state
+		validateTowers(player);
+		clearLastOrder(player);
 		updateDataTechState(player);
-    state.money = player.inputData.header.money;
-
-    // do something useful
-    mostBasicStrategy(player);
-
-    // step time
-    player.myTime++;
-  }
+		mostBasicStrategy(player);
+	}
 
   private static final int MIN_MONEY = 700;
-
-  public static class TowerInfo {
-		public static enum Type {
-			DEFEND,
-			ATTACK,
-			ACQUIRE
-		}
-
-		public Type type;
-    public short id;
-    public double profit;
-    public short distance;
-		public float offer;
-		public float rentingCost;
-		public float actionCost; // the cost of the current action
-		public float cost; // the total cost in the next n rounds
-
-    public TowerInfo(short id, double profit, short distance, Type type, float offer, float rentingCost, float cost, float actionCost) {
-      this.id = id;
-      this.profit = profit;
-      this.distance = distance;
-			this.type = type;
-			this.offer = offer;
-			this.rentingCost = rentingCost;
-			this.cost = cost;
-			this.actionCost = actionCost;
-    }
-    public static class TowerInfoComparator implements Comparator<TowerInfo> {
-
-      @Override
-      public int compare(TowerInfo o1, TowerInfo o2) {
-          return (int)(o2.profit-o2.cost - (o1.profit-o1.cost));
-      }
-
-      @Override
-      public boolean equals(Object obj) {
-        if (! (obj instanceof TowerInfoComparator)) return false;
-        return true;
-      }
-    }
-  }
 
 	private static Random strategyR = new Random(44);
 	private static float INVEST_PROB = 0.5f;
 	private static float MINIMUM_PROFIT = 10f;
 
 	private static float ATTACK_PROB = 0.2f;
-
+private static int LOOKAHEAD = 3;
 	// TODO: it would be great to check the status of enemy players too!
   private static void mostBasicStrategy(TPlayer player) {
 		// TODO: do it better
-    int LOOKAHEAD = 3;
+	  
+	  state.money = player.inputData.header.money;
+    
     if (player.myTime > state.timeMax - LOOKAHEAD) return; // panic!
 
 		// invest
@@ -518,13 +453,15 @@ public class Player {
     Set<Short> notWorthItTowers = new HashSet<>();
       bannedTowers = new HashSet<>();
 
-    // check if the owned towers still worth it
-    for (Short towerID : myTowers) {
-      double[] stats = getProfitNextSteps(player, towerID, player.inputData.towerInf[towerID].rentingCost,
-          player.inputData.towerInf[towerID].offer, player.inputData.towerInf[towerID].distance, LOOKAHEAD);
-      if (stats[0] - stats[1] < MINIMUM_PROFIT) secureTowers.add(towerID);
-      else notWorthItTowers.add(towerID);
-    }
+		// check if the owned towers still worth it
+		for (Short towerID : myTowers) {
+			double[] stats = getProfitNextSteps(player, towerID, player.inputData.towerInf[towerID].rentingCost,
+					player.inputData.towerInf[towerID].offer, player.inputData.towerInf[towerID].distance, LOOKAHEAD);
+			if (stats[0] - stats[1] < MINIMUM_PROFIT)
+				secureTowers.add(towerID);
+			else
+				notWorthItTowers.add(towerID);
+		}
 
 		ArrayList<TowerInfo> towers = new ArrayList<>();
 
@@ -612,21 +549,24 @@ public class Player {
 
 
     Collections.sort(towers, new TowerInfo.TowerInfoComparator());
-    for (TowerInfo t : towers) {
-      //System.out.println("TowerID: " + i + "profit: " + profitNextSteps);
-      // buy as long as we can
-        // banned logic
-        if (t.type == TowerInfo.Type.ACQUIRE && bannedTowers.contains(t.id)) continue;
-        if (strategyR.nextFloat() > 0.5f) continue; // be full retard!
-      if (state.money - MIN_MONEY >  t.actionCost) {
-        player.rentTower(t.id, (float)state.rentingMin, t.distance, (float)player.inputData.header.offerMax);
-        state.money -= t.actionCost; // cost of caution
-          if (t.type == TowerInfo.Type.ACQUIRE) {
-              addBannedTowers(bannedTowers, t, player);
-          }
-      }
-      if (player.outputData.numOrders > 5) break; // sanity stuff
-    }
+		for (TowerInfo t : towers) {
+			// System.out.println("TowerID: " + i + "profit: " + profitNextSteps);
+			// buy as long as we can
+			// banned logic
+			if (t.type == TowerInfo.Type.ACQUIRE && bannedTowers.contains(t.id))
+				continue;
+			if (strategyR.nextFloat() > 0.5f)
+				continue; // be full retard!
+			if (state.money - MIN_MONEY > t.actionCost) {
+				player.rentTower(t.id, (float) state.rentingMin, t.distance, (float) player.inputData.header.offerMax);
+				state.money -= t.actionCost; // cost of caution
+				if (t.type == TowerInfo.Type.ACQUIRE) {
+					addBannedTowers(bannedTowers, t, player);
+				}
+			}
+			if (player.outputData.numOrders > 5)
+				break; // sanity stuff
+		}
 
     // leave not worth it towers
     for (Short towerID : notWorthItTowers) {
@@ -662,26 +602,30 @@ public class Player {
       }
   }
 
-  private static double[] getProfitNextSteps(TPlayer player, Short towerID, float rentingCost,
-      float offer, short distance, int aheadSteps) {
-    double revenue = 0.0d;
+	/**
+	 * returns [revenue, cost]
+	 */
+	private static double[] getProfitNextSteps(TPlayer player, Short towerID, float rentingCost, float offer,
+			short distance, int aheadSteps) {
+		double revenue = 0.0d;
 		double cost = 0.0d;
-    for (int i = 0; i < aheadSteps; i++) {
-      double stats[] = EnemyAwareTowerUtils
-          .profitOfTower(towerID, rentingCost, offer, distance, player.myTime + i, player);
+		for (int i = 0; i < aheadSteps; i++) {
+			Double stats[] = EnemyAwareTowerUtils.profitOfTower(towerID, rentingCost, offer, distance, player.myTime
+					+ i, player);
 			revenue += stats[0];
 			cost += stats[1];
-    }
+		}
+		return new double[] { revenue, cost };
+	}
 
-    return new double[]{revenue, cost};
-  }
-
+	// ez mit csinal ??
 	private static void updateDataTechState(TPlayer player) {
 		for (int i = 0; i < state.techCosts.length; i++) {
 			if (player.inputData.header.resPoints > state.techCosts[i]) {
 				dataTechnology = i;
 			}
 		}
+//		Arrays.stream(state.techCosts).;
 	}
 
   // strategies section

@@ -1,3 +1,4 @@
+package api;
 public class TtowerInfRec {
 	public short owner;      // 0: free
 	public short leave;      // leave in month

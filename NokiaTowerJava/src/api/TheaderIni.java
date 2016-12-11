@@ -1,3 +1,4 @@
+package api;
 public class TheaderIni {
 	public int init;            // 1, initialization
 	public int timeOut;         // timeout in milisec
