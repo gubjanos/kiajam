@@ -1,4 +1,5 @@
 package api;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Scanner;
@@ -13,6 +14,7 @@ public class TPlayer {
 	public TheaderIni headerIni = new TheaderIni();
 	public TinputData inputData = new TinputData();
 	public ToutputData outputData = new ToutputData();
+	public TclubBonuses clubBonuses = new TclubBonuses();
 
 	public String scriptName = "";
 
@@ -26,11 +28,6 @@ public class TPlayer {
 		this.ID = 0;
 		this.seed = 0;
 		this.myTime = 0;
-	}
-
-	public void init() {
-		map = new Map();
-		map.GenerateMap(headerIni.seed);
 	}
 
 	public void loadScript() throws FileNotFoundException {

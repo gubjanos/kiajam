@@ -51,10 +51,16 @@ public class Player {
   		// initialize characteristics
   		state = player.headerIni;
 
-  		map = player.map;
+		player.clubBonuses.rentingCost = 20;
+		player.clubBonuses.runningCost = 20;
+		player.clubBonuses.taxRelief = 20;
+		player.clubBonuses.researchCost = 20;
+		player.clubBonuses.reasearchEfficiency = 20;
+
+		map = player.map;
   		populations = new int[Decl.TIME_MAX][][];
   		populations[0] = cloneIntArray(map.pop);
-
+		player.clubBonuses
   		// calculating populations in advance
   		for (int i = 1; i < Decl.TIME_MAX; i++) {
   			map.MapNextTime();
