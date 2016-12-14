@@ -165,9 +165,10 @@ public class Player {
         }
 
 
-
+		public static Integer numTowers = null;
         public static int numberOfTowers(final TPlayer player) {
-            return (int) Arrays.stream(player.map.towers).filter(x -> x[0] + x[1] != 0).count();
+            if (numTowers == null) numTowers = (int)Arrays.stream(player.map.towers).filter(x -> x[0] + x[1] != 0).count();
+			return numTowers;
         }
 
         /**
@@ -369,7 +370,7 @@ public class Player {
                                             TPlayer player) {
             if (distance > TowerUtils.maximumDistance(towerID, dataTech, time)) return 0.0;
             double overlapLoss = 0.0d;
-            for (short i = 0; i < player.inputData.header.numTowers; i++) {
+            for (short i = 0; i < IterativeInitializationProcess.numberOfTowers(player); i++) {
                 if (i == towerID)
                     continue;
                 TtowerInfRec actualInfo = player.inputData.towerInf[i];
@@ -510,12 +511,15 @@ public class Player {
                 double extendMaxProfit = 0.0d;
                 for (short extendDistance = (short) state.distMin; extendDistance < state.distMax; extendDistance += RADIUS_APPROXIMATION) {
                     // going for high order
-                    double[] rangeIncrementStats = getProfitNextSteps(player, i, (float) state.rentingMin,
-                            (float) player.inputData.header.offerMax, extendDistance, LOOKAHEAD);
-                    if (rangeIncrementStats[0] - rangeIncrementStats[1] > extendMaxProfit) {
-                        extendMaxProfit = rangeIncrementStats[0] - rangeIncrementStats[1];
-                        extendMaxInfo = new TowerAction(i, extendMaxProfit, extendDistance, TowerAction.Type.EXTEND, (float) player.inputData.header.offerMax, (float) state.rentingMin, (float) rangeIncrementStats[1], (float) state.rentingMin * 4);
-                    }
+                    double[] offers = {offer * 0.9, offer, offer * 1.1, player.headerIni.offerMax};
+					for (double extendOffer : offers) {
+						double[] rangeIncrementStats = getProfitNextSteps(player, i, rentingCost,
+								(float) extendOffer, extendDistance, LOOKAHEAD);
+						if (rangeIncrementStats[0] - rangeIncrementStats[1] > extendMaxProfit) {
+							extendMaxProfit = rangeIncrementStats[0] - rangeIncrementStats[1];
+							extendMaxInfo = new TowerAction(i, extendMaxProfit, extendDistance, TowerAction.Type.EXTEND, (float) player.inputData.header.offerMax, (float) state.rentingMin, (float) rangeIncrementStats[1], (float) state.rentingMin * 4);
+						}
+					}
                 }
                 if (extendMaxInfo != null) {
                     actions.add(extendMaxInfo);
@@ -570,7 +574,7 @@ public class Player {
 
                 if (maximumInfo != null) {
                 	actions.add(maximumInfo);
-                };
+                }
             }
         }
         return actions;
@@ -582,7 +586,7 @@ public class Player {
 
 
 	private static void addBannedTowers(Set<Short> bannedTowers, TowerAction t, TPlayer player) {
-        for (short i = 0; i < player.inputData.header.numTowers; i++) {
+		for (short i = 0; i < IterativeInitializationProcess.numberOfTowers(player); i++) {
             if (bannedTowers.contains(i)) continue; // no need to explain
             if (towerDistances[t.id][i] < (2 * t.distance)) bannedTowers.add(i); // bann
         }
