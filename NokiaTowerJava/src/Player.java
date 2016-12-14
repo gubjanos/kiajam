@@ -377,6 +377,7 @@ public class Player {
 		// TODO: we are not aware of our own bids yet
 		public static double revenueOfTower(short towerID, double dataTech, short distance, int time, double offer,
 				TPlayer player) {
+			if (distance > TowerUtils.maximumDistance(towerID, dataTech, time)) return 0.0;
 			double overlapLoss = 0.0d;
 			for (short i = 0; i < player.inputData.header.numTowers; i++) {
 				if (i == towerID)
@@ -396,7 +397,7 @@ public class Player {
 				// overlap, complex calculations happens here
 				overlapLoss += overlap;
 			}
-			return towerPopulations[time][towerID][distance - state.distMin] * offer * (1.0d - overlapLoss) / 1_000_000;
+			return towerPopulations[time][towerID][distance - state.distMin] * offer * (1.0d - overlapLoss) / 1_000_000 * 0.9; // ADO
 		}
 
     public static double actualProfitOfTower(short towerID, TPlayer player) {
