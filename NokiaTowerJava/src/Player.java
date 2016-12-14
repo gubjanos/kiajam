@@ -394,6 +394,7 @@ public class Player {
 				// overlap, complex calculations happens here
 				overlapLoss += overlap;
 			}
+			if (overlapLoss > 0.9) return 0.0;
 			return towerPopulations[time][towerID][distance - state.distMin] * offer * (1.0d - overlapLoss) / 1_000_000 * 0.9; // ADO
 		}
 
@@ -566,8 +567,8 @@ private static int LOOKAHEAD = 3;
 					addBannedTowers(bannedTowers, t, player);
 				}
 			}
-			if (player.outputData.numOrders > 5)
-				break; // sanity stuff
+			//if (player.outputData.numOrders > 5)
+			//	break; // sanity stuff
 		}
 
     // leave not worth it towers
