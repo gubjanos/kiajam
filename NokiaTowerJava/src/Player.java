@@ -348,7 +348,7 @@ public class Player {
       if (distance < state.distMin) return -rentingCost;
       double cost = costOfTower(towerID, rentingCost, distance, player);
       // TODO: do something with distances here
-      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(state.dataMulti, dataTechnology - 1), (short)(distance-state.distMin), time, offer);
+      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(state.techMulti, dataTechnology - 1), (short)(distance-state.distMin), time, offer);
       //System.out.println("For tower: " + towerID + "cost: " + cost + "revenue: " + revenue);
       return revenue - cost;
     }
@@ -367,7 +367,7 @@ public class Player {
     public static Double[] profitOfTower(short towerID, float rentingCost, float offer, short distance, int time, TPlayer player) {
       if (distance < state.distMin) return new Double[] {(double) 0, (double) -rentingCost}; // TODO the cost is not exact!
       double cost = TowerUtils.costOfTower(towerID, rentingCost, distance, player);
-      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(state.dataMulti, dataTechnology - 1), (distance), time, offer, player);
+      double revenue = revenueOfTower(towerID, state.dataTech * Math.pow(state.techMulti, dataTechnology - 1), (distance), time, offer, player);
       //System.out.println("For tower: " + towerID + "cost: " + cost + "revenue: " + revenue);
       return new Double[] {revenue, cost};
     }
