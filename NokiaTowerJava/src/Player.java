@@ -397,7 +397,7 @@ public class Player {
 				// overlap, complex calculations happens here
 				overlapLoss += overlap;
 			}
-			return towerPopulations[time][towerID][distance - state.distMin] * offer * (1.0d - overlapLoss) / 1_000_000;
+			return towerPopulations[time][towerID][distance - state.distMin] * offer * (1.0d - overlapLoss) / 1_000_000 * 0.9; // ADO
 		}
 
     public static double actualProfitOfTower(short towerID, TPlayer player) {
