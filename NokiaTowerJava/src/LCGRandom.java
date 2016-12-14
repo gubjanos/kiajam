@@ -1,3 +1,4 @@
+
 public class LCGRandom {
 
     public int Seed;

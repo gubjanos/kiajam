@@ -43,11 +43,7 @@ public class Player {
   		// initialize characteristics
   		state = player.headerIni;
 
-		player.clubBonuses.rentingCost = 20;
-		player.clubBonuses.runningCost = 20;
-		player.clubBonuses.taxRelief = 20;
-		player.clubBonuses.researchCost = 20;
-		player.clubBonuses.reasearchEfficiency = 20;
+
 
 		map = player.map;
   		populations = new int[Decl.TIME_MAX][][];
@@ -168,7 +164,8 @@ public class Player {
 			}
 			System.out.println("calculateTowerPopulations: [" + (System.currentTimeMillis()-t) + "] ms");
 		}
-		
+
+
 		static int numberOfTowers(final TPlayer player) {
 			return (int)Arrays.stream(player.map.towers).filter(x -> x[0] + x[1] != 0).count();
 		}
@@ -775,5 +772,16 @@ private static int LOOKAHEAD = 3;
 		public short id;
 		public short[] closestTowers;
 		public double[] overlaps;
+	}
+
+	public static void initMove(TPlayer player) {
+		player.map = new Map();
+		player.map.GenerateMap(player.headerIni.seed);
+
+		player.clubBonuses.rentingCost = 20;
+		player.clubBonuses.runningCost = 20;
+		player.clubBonuses.taxRelief = 20;
+		player.clubBonuses.researchCost = 20;
+		player.clubBonuses.reasearchEfficiency = 20;
 	}
 }

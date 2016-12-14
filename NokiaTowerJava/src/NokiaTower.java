@@ -14,7 +14,6 @@ public class NokiaTower {
 
             Comm.initComm();
 
-//            TPlayer player = new TPlayer();
             TPlayer player = new TPlayer();
 
             player.ID = 1 + (args[0].charAt(2) - '0');
@@ -27,16 +26,12 @@ public class NokiaTower {
             }
 
             Comm.readIniData(player);
-            //player.init();
-            Player.makeMove(player);
-            Comm.writeData(player);
+            Player.initMove(player);
+            Comm.writeIniData(player);
 
             while (Comm.readData(player) != 0) {
-                long t = System.currentTimeMillis();
                 Player.makeMove(player);
-                System.out.println("TIME TAKEN: " + (System.currentTimeMillis() - t));
                 Comm.writeData(player);
-
             }
 
         }

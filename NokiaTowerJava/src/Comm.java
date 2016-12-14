@@ -17,6 +17,12 @@ public class Comm {
 		ByteArrayToPlayerIni(player);
 		return res;
 	}
+	
+	public static int writeIniData(TPlayer player) {
+		PlayerToByteArrayIni(player);
+		int res = CommLibrary.INSTANCE.write_data_proc(writeBuffer);
+		return res;
+	}
 
 	public static int readData(TPlayer player) {
 		int res = CommLibrary.INSTANCE.read_data_proc(readBuffer);
@@ -55,6 +61,16 @@ public class Comm {
 
 		for (int i = 0; i <= Decl.TECH_LEVEL_MAX; i++)
 			player.headerIni.techCosts[i] = readDouble();
+	}
+	
+	private static void PlayerToByteArrayIni(TPlayer player) {
+		pos = 0;
+		
+		writeDouble(player.clubBonuses.rentingCost);
+		writeDouble(player.clubBonuses.runningCost);
+		writeDouble(player.clubBonuses.taxRelief);
+		writeDouble(player.clubBonuses.researchCost);
+		writeDouble(player.clubBonuses.reasearchEfficiency);
 	}
 
 	private static void ByteArrayToPlayer(TPlayer player) {
