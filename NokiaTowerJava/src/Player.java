@@ -453,7 +453,7 @@ public class Player {
         for (TowerAction t : actions) {
 			if (actionTaken.contains(t.id)) continue; // towers having action in this round
 			if (t.type == TowerAction.Type.LEAVE) {
-				if (t.profit < 0) {
+				if (t.profit < MINIMUM_PROFIT) {
 					player.leaveTower(t.id);
 					actionTaken.add(t.id);
 				}
@@ -508,7 +508,7 @@ public class Player {
 
                 // EXTEND
                 TowerAction extendMaxInfo = null;
-                double extendMaxProfit = 0.0d;
+                double extendMaxProfit = MINIMUM_PROFIT;
                 for (short extendDistance = (short) state.distMin; extendDistance < state.distMax; extendDistance += RADIUS_APPROXIMATION) {
                     // going for high order
                     double[] offers = {offer * 0.9, offer, offer * 1.1, player.headerIni.offerMax};
@@ -528,7 +528,7 @@ public class Player {
             } else if (towerInfo.owner == 0) {
                 // ACQUIRE
                 short maxDistance = TowerUtils.maximumDistance(i, getAvailableCapacity(), player.myTime);
-                double maximumProfit = 0.0d;
+                double maximumProfit = MINIMUM_PROFIT;
                 TowerAction maximumInfo = null;
 
                 for (short acquireDistance = (short) state.distMin; acquireDistance < maxDistance; acquireDistance += RADIUS_APPROXIMATION) {
@@ -560,7 +560,7 @@ public class Player {
 
                 int ourOverlicit = 10 + strategyR.nextInt(10);
                 float percentage = 1.0f + ourOverlicit / 100.0f;//test
-                double maximumProfit = 0.0d;
+                double maximumProfit = MINIMUM_PROFIT;
                 TowerAction maximumInfo = null;
                 short maxDistance = TowerUtils.maximumDistance(i, getAvailableCapacity(), player.myTime);
 
