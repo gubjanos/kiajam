@@ -30,7 +30,7 @@ public class NokiaTower {
             }
 
             Comm.readIniData(player);
-            player.init();
+            //player.init();
             Player.makeMove(player);
             Comm.writeData(player);
 

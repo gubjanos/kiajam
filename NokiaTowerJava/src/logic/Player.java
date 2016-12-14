@@ -270,6 +270,12 @@ public class Player {
 
 	public static void makeMove(TPlayer player) {
 		System.out.println("money: " + player.inputData.header.money);
+		//wtf
+		if (player.map == null) {
+			player.map = new Map();
+			player.map.GenerateMap(player.headerIni.seed);
+		}
+
 		long t = System.currentTimeMillis();
 		if (player.myTime == 0) {
 			IterativeInitializationProcess.init(player, 10);
