@@ -60,7 +60,7 @@ public class Player {
 		map = player.map;
   		populations = new int[Decl.TIME_MAX][][];
   		populations[0] = cloneIntArray(map.pop);
-		player.clubBonuses
+
   		// calculating populations in advance
   		for (int i = 1; i < Decl.TIME_MAX; i++) {
   			map.MapNextTime();
