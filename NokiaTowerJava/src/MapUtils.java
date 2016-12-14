@@ -1,5 +1,4 @@
-package logic;
-  public class MapUtils {
+public class MapUtils {
     // Returns if a point (x1, y1) inside a (x2, y2) centered d radius circle
     public static boolean isInsideCircle(int x1, int y1, int x2, int y2, int radius) {
       return calculateSquaredDistance(x1, y1, x2, y2) <= (radius * radius);

@@ -1,5 +1,3 @@
-package logic;
-
 import java.util.Comparator;
 
 public class TowerInfo {
