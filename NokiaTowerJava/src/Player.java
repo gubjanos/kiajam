@@ -300,10 +300,10 @@ public class Player {
         // calculate
         // maximum distance for a tower wrt data limit
         // if a tower could not do any production distMin-1 is returned
-        public static short maximumDistance(short towerID, double dataTech, int time) {
+        public static short maximumDistance(short towerID, double capacity, int time) {
             for (int i = 0; i < effectiveMaxRadius; i++) {
                 double dataNeed = towerPopulations[time][towerID][i] * dataNeedInTime[time];
-                if (dataNeed > dataTech) return (short) (state.distMin + i - 1);
+                if (dataNeed > capacity) return (short) (state.distMin + i - 1);
             }
 
             return (short) (effectiveMaxRadius + state.distMin);
@@ -430,14 +430,11 @@ public class Player {
         if (player.myTime > state.timeMax - LOOKAHEAD) return; // panic!
 
         //TODO: REVISE invest
-        if (state.dataTech < state.techLevelMax - 1 && state.money > state.techCosts[(int) (state.dataTech + 1)] && strategyR.nextFloat() > INVEST_PROB) {
+        if (dataTechnology < state.techLevelMax - 1 && state.money > state.techCosts[(int) (dataTechnology + 1)] && strategyR.nextFloat() > INVEST_PROB) {
             float inv = (float) (strategyR.nextFloat() * state.money / 10);
             player.outputData.invest = inv;
             state.money -= inv;
         }
-
-        Set<Short> secureTowers = new HashSet<>();
-        Set<Short> notWorthItTowers = new HashSet<>();
         bannedTowers = new HashSet<>();
 
 
@@ -449,8 +446,18 @@ public class Player {
 
         actions.sort(new TowerAction.TowerInfoComparator());
 
+		// Second pass, applying and choosing actions
+		// first cloning state, restoring after this pass
+		Set<Short> actionTaken = new HashSet<>();
         for (TowerAction t : actions) {
-            // System.out.println("TowerID: " + i + "profit: " + profitNextSteps);
+			if (actionTaken.contains(t.id)) continue; // towers having action in this round
+			if (t.type == TowerAction.Type.LEAVE) {
+				if (t.profit < 0) {
+					player.leaveTower(t.id);
+					actionTaken.add(t.id);
+				}
+			}
+
             // buy as long as we can
             // banned logic
             if (t.type == TowerAction.Type.ACQUIRE && bannedTowers.contains(t.id))
@@ -458,40 +465,14 @@ public class Player {
             if (strategyR.nextFloat() > 0.5f)
                 continue; // be full retard!
             if (state.money - MIN_MONEY > t.actionCost) {
-                player.rentTower(t.id, (float) state.rentingMin, t.distance, (float) player.inputData.header.offerMax);
-                state.money -= t.actionCost; // cost of caution
+				// defend or extend or attack
+                player.rentTower(t.id, t.rentingCost, t.distance, (float) player.inputData.header.offerMax);
+                state.money -= t.actionCost; // cost of action
                 if (t.type == TowerAction.Type.ACQUIRE) {
                     addBannedTowers(bannedTowers, t, player);
                 }
+                actionTaken.add(t.id);
             }
-//			if (player.outputData.numOrders > 5)
-//				break; // sanity stuff
-        }
-
-        // leave not worth it towers
-        for (Short towerID : notWorthItTowers) {
-            // TODO: checking modifications on distance/offer for each tower as improvement
-      /*short maxDistance = TowerUtils.maximumDistance(towerID, state.dataTech, player.myTime);
-      double maximumProfit = 0.0d;
-      TowerAction maximumInfo = null;
-
-      for (short distance = (short)state.distMin; distance < maxDistance; distance++) {
-        // TODO: checking different offer levels
-        double profitNextSteps = getProfitNextSteps(player, towerID, (float) state.rentingMin,
-            (float) player.inputData.header.offerMax, distance, LOOKAHEAD);
-        if (profitNextSteps > maximumProfit) {
-          maximumProfit = profitNextSteps;
-          maximumInfo = new TowerAction(towerID, profitNextSteps, distance);
-        }
-      }
-      if (maximumProfit > 1.0) {
-        player.rentTower(towerID, player.inputData.towerInf[towerID].rentingCost, maximumInfo.distance, player.inputData.towerInf[towerID].offer);
-        continue; // does worth it!
-      }*/
-
-            // is not worth it!
-            myTowers.remove(towerID);
-            player.leaveTower(towerID);
         }
     }
 
@@ -542,7 +523,7 @@ public class Player {
 
             } else if (towerInfo.owner == 0) {
                 // ACQUIRE
-                short maxDistance = TowerUtils.maximumDistance(i, state.dataTech, player.myTime);
+                short maxDistance = TowerUtils.maximumDistance(i, getAvailableCapacity(), player.myTime);
                 double maximumProfit = 0.0d;
                 TowerAction maximumInfo = null;
 
@@ -574,10 +555,10 @@ public class Player {
                 if (strategyR.nextFloat() > ATTACK_PROB) continue; // thats it
 
                 int ourOverlicit = 10 + strategyR.nextInt(10);
-                float percentage = 1.0f + ourOverlicit / 100.0f;
+                float percentage = 1.0f + ourOverlicit / 100.0f;//test
                 double maximumProfit = 0.0d;
                 TowerAction maximumInfo = null;
-                short maxDistance = TowerUtils.maximumDistance(i, state.dataTech, player.myTime);
+                short maxDistance = TowerUtils.maximumDistance(i, getAvailableCapacity(), player.myTime);
 
                 for (short distance = (short) state.distMin; distance < maxDistance; distance += RADIUS_APPROXIMATION) {
                     double[] stats = getProfitNextSteps(player, i, percentage * player.inputData.towerInf[i].rentingCost, (float) player.inputData.header.offerMax, distance, LOOKAHEAD);
@@ -587,13 +568,20 @@ public class Player {
                     }
                 }
 
-                actions.add(maximumInfo);
+                if (maximumInfo != null) {
+                	actions.add(maximumInfo);
+                };
             }
         }
         return actions;
     }
 
-    private static void addBannedTowers(Set<Short> bannedTowers, TowerAction t, TPlayer player) {
+	private static double getAvailableCapacity() {
+		return state.dataTech * Math.pow(state.techMulti, dataTechnology-1);//test
+	}
+
+
+	private static void addBannedTowers(Set<Short> bannedTowers, TowerAction t, TPlayer player) {
         for (short i = 0; i < player.inputData.header.numTowers; i++) {
             if (bannedTowers.contains(i)) continue; // no need to explain
             if (towerDistances[t.id][i] < (2 * t.distance)) bannedTowers.add(i); // bann
@@ -732,14 +720,7 @@ public class Player {
             // TODO: REVISE
             @Override
             public int compare(TowerAction o1, TowerAction o2) {
-                return (int) (o2.profit - o2.cost - (o1.profit - o1.cost));
-            }
-
-            @Override
-            public boolean equals(Object obj) {
-                if (!(obj instanceof TowerInfoComparator))
-                    return false;
-                return true;
+                return -Double.compare(o1.profit, o2.profit);
             }
         }
     }
