@@ -462,7 +462,7 @@ private static int LOOKAHEAD = 3;
 		for (Short towerID : myTowers) {
 			double[] stats = getProfitNextSteps(player, towerID, player.inputData.towerInf[towerID].rentingCost,
 					player.inputData.towerInf[towerID].offer, player.inputData.towerInf[towerID].distance, LOOKAHEAD);
-			if (stats[0] - stats[1] < MINIMUM_PROFIT)
+			if (stats[0] - stats[1] > MINIMUM_PROFIT)
 				secureTowers.add(towerID);
 			else
 				notWorthItTowers.add(towerID);
